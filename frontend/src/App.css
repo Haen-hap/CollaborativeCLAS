@@ -1,0 +1,143 @@
+:root {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #18324a;
+  background: #f4f8fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(31, 136, 229, 0.16),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #f7fbff 0%, #eaf4fb 100%);
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.welcome-card {
+  width: min(100%, 680px);
+  padding: clamp(28px, 6vw, 56px);
+  border: 1px solid rgba(135, 170, 197, 0.32);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 22px 60px rgba(19, 69, 105, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #0878c9;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  max-width: 620px;
+  margin: 0;
+  color: #0a2942;
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.intro-text {
+  max-width: 590px;
+  margin: 24px 0 30px;
+  color: #496275;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  line-height: 1.7;
+}
+
+.status-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding: 18px;
+  border: 1px solid #c9e8d8;
+  border-radius: 18px;
+  background: #f1fbf5;
+}
+
+.status-card h2 {
+  margin: 0 0 6px;
+  color: #176b40;
+  font-size: 1rem;
+}
+
+.status-card p {
+  margin: 0;
+  color: #47705a;
+  line-height: 1.5;
+}
+
+.status-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #23a064;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.primary-button {
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0878c9, #005f9f);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 750;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primary-button:hover {
+  box-shadow: 0 12px 24px rgba(0, 95, 159, 0.24);
+  transform: translateY(-2px);
+}
+
+.primary-button:focus-visible {
+  outline: 3px solid rgba(8, 120, 201, 0.35);
+  outline-offset: 4px;
+}
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .welcome-card {
+    border-radius: 22px;
+  }
+}
