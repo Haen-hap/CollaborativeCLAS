@@ -15,3 +15,9 @@ __pycache__/
 .env
 
 
+# Node / React
+frontend/node_modules/
+frontend/dist/
+
+# Legacy static frontend backup
+frontend-legacy/
