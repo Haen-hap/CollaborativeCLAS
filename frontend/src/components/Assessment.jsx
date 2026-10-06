@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { assessmentQuestions } from "../data/assessmentData";
+import { calculateAssessmentResult } from "../utils/assessmentScoring";
 
 export default function Assessment({ onComplete }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
 
   const totalQuestions = assessmentQuestions.length;
-  const currentQuestion = assessmentQuestions[currentIndex];
-  const progress = ((currentIndex + 1) / totalQuestions) * 100;
+  const currentQuestion = assessmentQuestions[currentQuestionIndex];
+  const selectedOption = answers[currentQuestion.id];
+  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
   const handleSelectOption = (optionIndex) => {
     setAnswers((prev) => ({
@@ -17,32 +19,23 @@ export default function Assessment({ onComplete }) {
   };
 
   const handleNext = () => {
-    if (currentIndex < totalQuestions - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      // Finish assessment
-      const score = calculateScore();
-      onComplete({ score, totalQuestions, answers });
+    if (selectedOption === undefined) {
+      return;
     }
+
+    if (currentQuestionIndex < totalQuestions - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      return;
+    }
+
+    onComplete(calculateAssessmentResult(assessmentQuestions, answers));
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((prev) => prev - 1);
     }
   };
-
-  const calculateScore = () => {
-    let correct = 0;
-    assessmentQuestions.forEach((q) => {
-      if (answers[q.id] === q.correctIndex) {
-        correct++;
-      }
-    });
-    return correct;
-  };
-
-  const selectedOption = answers[currentQuestion.id];
 
   return (
     <div className="assessment-container">
@@ -54,7 +47,7 @@ export default function Assessment({ onComplete }) {
           />
         </div>
         <div className="assessment-progress-text">
-          Question {currentIndex + 1} of {totalQuestions}
+          Question {currentQuestionIndex + 1} of {totalQuestions}
         </div>
       </div>
 
@@ -85,7 +78,7 @@ export default function Assessment({ onComplete }) {
         <button
           className="assessment-nav-button secondary"
           onClick={handlePrevious}
-          disabled={currentIndex === 0}
+          disabled={currentQuestionIndex === 0}
         >
           Previous
         </button>
@@ -95,7 +88,7 @@ export default function Assessment({ onComplete }) {
           onClick={handleNext}
           disabled={selectedOption === undefined}
         >
-          {currentIndex === totalQuestions - 1 ? "Finish" : "Next"}
+          {currentQuestionIndex === totalQuestions - 1 ? "Finish" : "Next"}
         </button>
       </div>
     </div>
