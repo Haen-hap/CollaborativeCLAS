@@ -126,6 +126,38 @@ body {
   transform: translateY(0);
 }
 
+/* QR entry page for organizers */
+.qr-page {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.qr-card {
+  width: min(100%, 520px);
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.qr-eyebrow { color: #a5b4fc; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.qr-card h1 { color: #f3f4f6; font-size: 30px; }
+.qr-intro, .qr-note { color: var(--text-dim); font-size: 14px; }
+.qr-image { width: min(100%, 320px); height: auto; border: 12px solid #fff; border-radius: 8px; image-rendering: pixelated; }
+.qr-url { color: #c7d2fe; overflow-wrap: anywhere; }
+.qr-download { border: 0; border-radius: 10px; padding: 12px 18px; color: #fff; background: var(--primary); font: inherit; font-weight: 700; cursor: pointer; }
+.qr-download:disabled { opacity: .5; cursor: not-allowed; }
+.qr-error { color: #fca5a5; }
+
 /* Modal */
 .modal-overlay {
   position: fixed;
