@@ -12,5 +12,5 @@ class Questions(Base):
     points = Column(Integer)
 
     assessment = relationship("Assessment", back_populates="questions")
-    answer = relationship("Answer", back_populates="question")
+    answers = relationship("Answer", back_populates="question")
 
