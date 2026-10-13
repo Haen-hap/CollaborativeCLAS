@@ -14,7 +14,7 @@ class AssessmentSubmission(Base):
     consent_given = Column(Boolean)
 
     assessment = relationship("Assessment", back_populates="submissions")
-    demographic_profile = relationship("DemographicProfile", back_populates="submissions")
+    demographic_profile = relationship("DemographicProfiles", back_populates="submissions")
     location = relationship("Location", back_populates="submissions")
-    answers = relationship("Answer", back_populates="submissions", cascade="all, delete-orphan")
-    result= relationship("AssessmentResult", back_populates="submissions", uselist=False, cascade="all, delete-orphan")
+    answers = relationship("Answer", back_populates="submission", cascade="all, delete-orphan")
+    result= relationship("AssessmentResult", back_populates="submission", uselist=False, cascade="all, delete-orphan")

@@ -10,6 +10,6 @@ class AssessmentResult(Base):
     total_score = Column(Integer)
     digital_score = Column(Integer)
     priority_level = Column(Integer)
-    submission = relationship("AssessmentSubmission", back_populates="results")
+    submission = relationship("AssessmentSubmission", back_populates="result")
 
 
