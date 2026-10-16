@@ -15,16 +15,16 @@ export default function QrEntryPage() {
     if (!qrImage.src) return;
     const link = document.createElement("a");
     link.href = qrImage.src;
-    link.download = "cclas-participant-qr.png";
+    link.download = "clas-participant-qr.png";
     link.click();
   };
 
   return (
     <main className="qr-page">
       <section className="qr-card">
-        <p className="qr-eyebrow">CCLAS participant entry</p>
-        <h1>Scan to start</h1>
-        <p className="qr-intro">This code opens the participant onboarding page. No account or login is required.</p>
+        <p className="qr-eyebrow">CLAS participant entry</p>
+        <h1>Scan to get started</h1>
+        <p className="qr-intro">Open CLAS on your phone to begin. No account is needed.</p>
         {qrImage.src ? (
           <img className="qr-image" src={qrImage.src} alt={`QR code for ${appUrl}`} />
         ) : (
@@ -34,7 +34,7 @@ export default function QrEntryPage() {
         <button className="qr-download" type="button" onClick={downloadQr} disabled={!qrImage.src}>
           Download QR as PNG
         </button>
-        <p className="qr-note">Use the address shown above for this environment. Local network addresses only work while this computer is running the app and the phone is on the same Wi‑Fi.</p>
+        <p className="qr-note">This link works while the app is running. For a local link, keep your phone and this computer on the same Wi-Fi network.</p>
       </section>
     </main>
   );

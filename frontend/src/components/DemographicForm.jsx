@@ -83,26 +83,24 @@ export default function DemographicForm({ onComplete }) {
       aria-labelledby="demographic-title"
     >
       <div className="demographic-card">
-        <span className="demographic-badge">Optional step</span>
+        <span className="demographic-badge">Optional</span>
 
         <h1 id="demographic-title" className="demographic-title">
-          A little about you
+          About you
         </h1>
 
         <p className="demographic-subtitle">
-          Help us understand the needs of your community. All fields are
-          optional.
+          A few optional details help us understand literacy needs in your community.
         </p>
 
         <div className="demographic-privacy-note">
-          Please do not enter your name, email, ID number or exact address. You
-          can continue without sharing any information.
+          Do not enter your name, ID number, email, or street address. You can skip any question and continue without sharing details.
         </div>
 
         <form className="demographic-form" onSubmit={handleSubmit}>
           <div className="demographic-field">
             <label htmlFor="demographic-age">
-              Age range
+              Your age range
               <span className="demographic-optional">Optional</span>
             </label>
 
@@ -123,7 +121,7 @@ export default function DemographicForm({ onComplete }) {
 
           <div className="demographic-field">
             <label htmlFor="demographic-gender">
-              Gender
+              Your gender
               <span className="demographic-optional">Optional</span>
             </label>
 
@@ -142,7 +140,7 @@ export default function DemographicForm({ onComplete }) {
 
           <div className="demographic-field">
             <label htmlFor="demographic-community">
-              City or community
+              Your city or community
               <span className="demographic-optional">Optional</span>
             </label>
 
@@ -169,7 +167,7 @@ export default function DemographicForm({ onComplete }) {
               type="text"
               value={community}
               onChange={(event) => setCommunity(event.target.value)}
-              placeholder="Enter your city or community if you prefer"
+              placeholder="Type a city or community"
               maxLength={100}
               aria-describedby="demographic-community-help"
             />
@@ -178,7 +176,7 @@ export default function DemographicForm({ onComplete }) {
               id="demographic-community-help"
               className="demographic-field-help"
             >
-              You can share GPS location or enter a city/community instead. Do not enter your street, house number or exact address.
+              Share your location with GPS or type a city or community. Do not enter a street or house number.
             </p>
           </div>
 
@@ -188,11 +186,11 @@ export default function DemographicForm({ onComplete }) {
               className="demographic-button secondary"
               onClick={handleSkip}
             >
-              Skip this step
+              Skip
             </button>
 
             <button type="submit" className="demographic-button primary">
-              Continue
+              Continue to questions
             </button>
           </div>
         </form>

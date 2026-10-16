@@ -5,12 +5,12 @@ export default function Dashboard({ result, onBack }) {
     <main className="results-page answer-review-page">
       <header className="results-heading">
         <div>
-          <p className="results-eyebrow">CCLAS · Assessment</p>
+          <p className="results-eyebrow">CLAS · Assessment</p>
           <h1>Review answers</h1>
-          <p>See the answer you chose and the correct answer for each question.</p>
+          <p>Your selected answer is shown beside the correct answer.</p>
         </div>
         <button className="results-back-button" type="button" onClick={onBack}>
-          Back to score
+          Back to your result
         </button>
       </header>
 
@@ -22,7 +22,7 @@ export default function Dashboard({ result, onBack }) {
                 <th scope="col">Question</th>
                 <th scope="col">Your answer</th>
                 <th scope="col">Correct answer</th>
-                <th scope="col">Result</th>
+                <th scope="col">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -36,7 +36,7 @@ export default function Dashboard({ result, onBack }) {
                     <td>{question.options[question.correctIndex]}</td>
                     <td>
                       <span className={`answer-result ${isCorrect ? "correct" : "incorrect"}`}>
-                        {isCorrect ? "Correct" : "Incorrect"}
+                        {isCorrect ? "Correct" : "Not quite"}
                       </span>
                     </td>
                   </tr>
