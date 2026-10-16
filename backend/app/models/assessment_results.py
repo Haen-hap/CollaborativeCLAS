@@ -1,15 +1,19 @@
-from sqlalchemy import Column, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, ForeignKey, String
+from sqlalchemy.orm import Relationship
 from app.core.database import Base
+
 
 class AssessmentResult(Base):
     __tablename__ = "assessment_results"
-    id = Column(Integer, primary_key=True, index=True)
-    submission_id = Column(Integer, ForeignKey("assessment_submissions.id"))
-    literacy_score = Column(Integer)
-    total_score = Column(Integer)
-    digital_score = Column(Integer)
-    priority_level = Column(Integer)
-    submission = relationship("AssessmentSubmission", back_populates="result")
-
-
+    session_id = Column(
+        Integer,
+        ForeignKey("assessment_session.session_id"),
+        primary_key=True,
+        nullable=False)
+    c1_visual_signs_score = Column(Integer, nullable=False)
+    c2_sentence_comprehension_score = Column(Integer, nullable=False)
+    c3_mobile_icons_score = Column(Integer, nullable=False)
+    c4_cybersecurity_score = Column(Integer, nullable=False)
+    total_literacy_score = Column(Integer, nullable=False)
+    literacy_classification = Column(String, nullable=False)
+    session = Relationship("AssessmentSession", back_populates="results",uselist=False)
