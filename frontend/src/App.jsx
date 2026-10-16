@@ -4,12 +4,14 @@ import DemographicForm from "./components/DemographicForm";
 import Assessment from "./components/Assessment";
 import ResultScreen from "./components/ResultScreen";
 import QrEntryPage from "./components/QrEntryPage";
+import Dashboard from "./components/Dashboard";
 import "./App.css";
 
 function App() {
   const [hasConsent, setHasConsent] = useState(false);
   const [demographics, setDemographics] = useState(null);
   const [assessmentResult, setAssessmentResult] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   if (window.location.pathname === "/qr") {
     return <QrEntryPage />;
@@ -25,6 +27,7 @@ function App() {
 
   const handleRestart = () => {
     setAssessmentResult(null);
+    setShowDashboard(false);
   };
 
   if (!hasConsent) {
@@ -39,11 +42,21 @@ function App() {
     return <Assessment onComplete={handleAssessmentComplete} />;
   }
 
+  if (showDashboard) {
+    return (
+      <Dashboard
+        result={assessmentResult}
+        onBack={() => setShowDashboard(false)}
+      />
+    );
+  }
+
   return (
     <ResultScreen
       score={assessmentResult.score}
       totalQuestions={assessmentResult.totalQuestions}
       onRestart={handleRestart}
+      onViewResults={() => setShowDashboard(true)}
     />
   );
 }
