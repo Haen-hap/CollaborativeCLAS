@@ -149,14 +149,50 @@ body {
   box-shadow: var(--shadow);
 }
 
-.qr-eyebrow { color: #a5b4fc; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.qr-card h1 { color: #f3f4f6; font-size: 30px; }
-.qr-intro, .qr-note { color: var(--text-dim); font-size: 14px; }
-.qr-image { width: min(100%, 320px); height: auto; border: 12px solid #fff; border-radius: 8px; image-rendering: pixelated; }
-.qr-url { color: #c7d2fe; overflow-wrap: anywhere; }
-.qr-download { border: 0; border-radius: 10px; padding: 12px 18px; color: #fff; background: var(--primary); font: inherit; font-weight: 700; cursor: pointer; }
-.qr-download:disabled { opacity: .5; cursor: not-allowed; }
-.qr-error { color: #fca5a5; }
+.qr-eyebrow {
+  color: #a5b4fc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.qr-card h1 {
+  color: #f3f4f6;
+  font-size: 30px;
+}
+.qr-intro,
+.qr-note {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.qr-image {
+  width: min(100%, 320px);
+  height: auto;
+  border: 12px solid #fff;
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+.qr-url {
+  color: #c7d2fe;
+  overflow-wrap: anywhere;
+}
+.qr-download {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  color: #fff;
+  background: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qr-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.qr-error {
+  color: #fca5a5;
+}
 
 /* Modal */
 .modal-overlay {
@@ -753,5 +789,198 @@ body {
   .onboarding-description p {
     font-size: 15px;
     line-height: 1.6;
+  }
+}
+
+/* SCRUM-42: Optional demographic form */
+
+.demographic-container {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.demographic-card {
+  width: 100%;
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.demographic-badge {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.demographic-title {
+  margin-bottom: 12px;
+  color: #f3f4f6;
+  font-size: clamp(26px, 5vw, 34px);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.demographic-subtitle {
+  margin-bottom: 22px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.demographic-privacy-note {
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.demographic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.demographic-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.demographic-field label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.demographic-optional {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.demographic-field select,
+.demographic-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  background: #111827;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.demographic-field select {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.demographic-field input::placeholder {
+  color: var(--text-dim);
+}
+
+.demographic-field select:focus-visible,
+.demographic-field input:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+  border-color: var(--primary);
+}
+
+.demographic-field-help {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.demographic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.demographic-button {
+  flex: 1;
+  min-height: 48px;
+  padding: 13px 18px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.demographic-button.primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+}
+
+.demographic-button.primary:hover {
+  background: var(--primary-hover);
+}
+
+.demographic-button.secondary {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border-color: #374151;
+}
+
+.demographic-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.demographic-button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .demographic-container {
+    padding: 24px 16px;
+  }
+
+  .demographic-card {
+    padding: 28px 20px;
+  }
+
+  .demographic-actions {
+    flex-direction: column;
+  }
+
+  .demographic-button {
+    width: 100%;
+    flex: auto;
   }
 }
