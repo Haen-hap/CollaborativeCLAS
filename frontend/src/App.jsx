@@ -4,6 +4,7 @@ import DemographicForm from "./components/DemographicForm";
 import Assessment from "./components/Assessment";
 import ResultScreen from "./components/ResultScreen";
 import QrEntryPage from "./components/QrEntryPage";
+import AdminPanel from "./components/AdminPanel";
 import "./App.css";
 
 function App() {
@@ -13,6 +14,13 @@ function App() {
 
   if (window.location.pathname === "/qr") {
     return <QrEntryPage />;
+  }
+
+  if (
+    window.location.pathname === "/admin" ||
+    window.location.pathname === "/admin/"
+  ) {
+    return <AdminPanel />;
   }
 
   const handleDemographicComplete = (data) => {
