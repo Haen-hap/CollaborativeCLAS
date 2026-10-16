@@ -919,6 +919,61 @@ body {
   line-height: 1.5;
 }
 
+.demographic-location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.demographic-location-button {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid #4b5563;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.demographic-location-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #818cf8;
+}
+
+.demographic-location-button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+}
+
+.demographic-location-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.demographic-location-actions .demographic-button {
+  flex: 0 1 auto;
+}
+
+.demographic-location-success {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .demographic-actions {
   display: flex;
   flex-wrap: wrap;
@@ -982,6 +1037,10 @@ body {
   .demographic-button {
     width: 100%;
     flex: auto;
+  }
+
+  .demographic-location-button {
+    width: 100%;
   }
 }
 
