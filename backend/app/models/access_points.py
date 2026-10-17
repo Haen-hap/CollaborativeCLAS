@@ -14,4 +14,4 @@ class AccessPoint(Base):
     code = Column(String, primary_key=True, nullable=False)
     name = Column(String, nullable=False)
     type = Column(Enum(AccessPointType), nullable=False)
-    sessions=Relationship("assessment_session",back_populates="access_point")
+    sessions=Relationship("assessment_sessions",back_populates="access_point")
