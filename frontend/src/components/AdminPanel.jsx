@@ -1,4 +1,6 @@
 import { useState } from "react";
+import AdminDashboard from "./AdminDashboard";
+import { adminDashboardMockSubmissions } from "../data/adminDashboardMockData";
 
 const adminPages = {
   dashboard: {
@@ -77,11 +79,22 @@ export default function AdminPanel() {
           aria-labelledby="admin-content-title"
         >
           <h3 id="admin-content-title">{currentPage.label}</h3>
-          <p>{currentPage.placeholder}</p>
 
-          <div className="admin-placeholder-note">
-            Backend data is not connected yet. No live records are displayed.
-          </div>
+          {activePage === "dashboard" ? (
+            <AdminDashboard
+              submissions={adminDashboardMockSubmissions}
+              isDemo={true}
+            />
+          ) : (
+            <>
+              <p>{currentPage.placeholder}</p>
+
+              <div className="admin-placeholder-note">
+                Backend data is not connected yet. No live records are
+                displayed.
+              </div>
+            </>
+          )}
         </section>
       </main>
     </div>
