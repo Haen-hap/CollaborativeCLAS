@@ -14,6 +14,48 @@ export default function DemographicForm({ onComplete }) {
   const [ageRange, setAgeRange] = useState("");
   const [gender, setGender] = useState("");
   const [community, setCommunity] = useState("");
+  const [locationStatus, setLocationStatus] = useState("idle");
+  const [coordinates, setCoordinates] = useState(null);
+  const [locationError, setLocationError] = useState("");
+
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      setLocationError("This browser does not support location sharing. You can enter your city or community below.");
+      setLocationStatus("manual");
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setLocationError("Location access requires HTTPS (or localhost). Open the app on localhost on this laptop, or use an HTTPS address.");
+      setLocationStatus("manual");
+      return;
+    }
+
+    setLocationStatus("requesting");
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: currentCoords }) => {
+        setCoordinates({
+          latitude: currentCoords.latitude,
+          longitude: currentCoords.longitude,
+        });
+        setLocationStatus("gps");
+      },
+      (error) => {
+        setCoordinates(null);
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? "The browser denied location access. Check the site’s location permission in your browser settings and make sure Location is enabled for this device. You can enter your city or community instead."
+            : error.code === error.POSITION_UNAVAILABLE
+              ? "The device could not determine its location. Turn on Location services and try again, or enter your city or community instead."
+              : "The location request timed out. Check Location services and try again, or enter your city or community instead.",
+        );
+        setLocationStatus("manual");
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    );
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -22,6 +64,7 @@ export default function DemographicForm({ onComplete }) {
       ageRange: ageRange || null,
       gender: gender || null,
       community: community.trim() || null,
+      location: coordinates,
     });
   }
 
@@ -30,6 +73,7 @@ export default function DemographicForm({ onComplete }) {
       ageRange: null,
       gender: null,
       community: null,
+      location: null,
     });
   }
 
@@ -102,12 +146,30 @@ export default function DemographicForm({ onComplete }) {
               <span className="demographic-optional">Optional</span>
             </label>
 
+            <div className="demographic-location-actions">
+              <button
+                type="button"
+                className="demographic-location-button"
+                onClick={requestLocation}
+                disabled={locationStatus === "requesting"}
+              >
+                {locationStatus === "requesting" ? "Requesting location…" : "Use my current location"}
+              </button>
+              {locationStatus === "gps" && (
+                <span className="demographic-location-success" role="status">
+                  ✓ Current location detected using GPS
+                </span>
+              )}
+            </div>
+
+            {locationError && <p className="demographic-field-help" role="status">{locationError}</p>}
+
             <input
               id="demographic-community"
               type="text"
               value={community}
               onChange={(event) => setCommunity(event.target.value)}
-              placeholder="Enter only your city or community"
+              placeholder="Enter your city or community if you prefer"
               maxLength={100}
               aria-describedby="demographic-community-help"
             />
@@ -116,7 +178,7 @@ export default function DemographicForm({ onComplete }) {
               id="demographic-community-help"
               className="demographic-field-help"
             >
-              Do not enter your street, house number or exact address.
+              You can share GPS location or enter a city/community instead. Do not enter your street, house number or exact address.
             </p>
           </div>
 
