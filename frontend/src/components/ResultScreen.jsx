@@ -1,4 +1,4 @@
-export default function ResultScreen({ score, totalQuestions, onRestart }) {
+export default function ResultScreen({ score, totalQuestions, onRestart, onViewResults }) {
   const percentage = Math.round((score / totalQuestions) * 100);
 
   let classification = "Red";
@@ -55,9 +55,14 @@ export default function ResultScreen({ score, totalQuestions, onRestart }) {
           )}
         </div>
 
-        <button className="result-button" onClick={onRestart}>
-          Restart Assessment
-        </button>
+        <div className="result-actions">
+          <button className="result-button" onClick={onRestart}>
+            Restart Assessment
+          </button>
+          <button className="result-button secondary" onClick={onViewResults}>
+            Review answers
+          </button>
+        </div>
       </div>
     </div>
   );
