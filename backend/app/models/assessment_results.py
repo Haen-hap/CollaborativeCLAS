@@ -7,7 +7,7 @@ class AssessmentResult(Base):
     __tablename__ = "assessment_results"
     session_id = Column(
         Integer,
-        ForeignKey("assessment_session.session_id"),
+        ForeignKey("assessment_sessions.session_id"),
         primary_key=True,
         nullable=False)
     c1_visual_signs_score = Column(Integer, nullable=False)
@@ -16,4 +16,4 @@ class AssessmentResult(Base):
     c4_cybersecurity_score = Column(Integer, nullable=False)
     total_literacy_score = Column(Integer, nullable=False)
     literacy_classification = Column(String, nullable=False)
-    session = Relationship("AssessmentSession", back_populates="results",uselist=False)
+    session = Relationship("assessment_sessions", back_populates="results",uselist=False)

@@ -29,9 +29,9 @@ class SchoolingLevel(str, enum.Enum):
     TERTIARY = "TERTIARY"
 
 
-class CompletionSatus(str, enum.Enum):
+class CompletionStatus(str, enum.Enum):
     ABANDONED = "ABANDONED"
-    COMPLETE = "COMPLETE"
+    COMPLETED = "COMPLETED"
 
 
 class AssessmentSession(Base):
@@ -53,7 +53,7 @@ class AssessmentSession(Base):
         nullable=False
     )
     location_declined = Column(Boolean, nullable=False)
-    completion_status = Column(Enum(CompletionSatus), nullable=False)
+    completion_status = Column(Enum(CompletionStatus), nullable=False)
     duration_seconds = Column(Integer, nullable=False)
 
     access_point = Relationship("Access_Points", back_populates="sessions",uselist=False)
