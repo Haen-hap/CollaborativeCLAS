@@ -15,14 +15,14 @@ export default function ResultScreen({ score, totalQuestions, onRestart, onViewR
   return (
     <div className="result-container">
       <div className="result-card">
-        <h2 className="result-title">Assessment Complete</h2>
+        <h2 className="result-title">You’re all done!</h2>
 
         <div className="result-score-section">
           <div className="result-score-circle">
             <span className="result-score-number">{score}</span>
             <span className="result-score-total">/ {totalQuestions}</span>
           </div>
-          <div className="result-percentage">{percentage}% correct</div>
+          <div className="result-percentage">You answered {score} of {totalQuestions} correctly ({percentage}%).</div>
         </div>
 
         <div
@@ -32,7 +32,7 @@ export default function ResultScreen({ score, totalQuestions, onRestart, onViewR
             color: classificationColor,
           }}
         >
-          <div className="classification-label">Classification</div>
+          <div className="classification-label">Your result</div>
           <div
             className="classification-value"
             style={{ color: classificationColor }}
@@ -43,24 +43,24 @@ export default function ResultScreen({ score, totalQuestions, onRestart, onViewR
 
         <div className="result-message">
           {classification === "Green" && (
-            <p>Great job! You have strong literacy skills.</p>
+            <p>Great work! You answered most questions correctly.</p>
           )}
           {classification === "Yellow" && (
             <p>
-              Good effort! You have a solid foundation with room to improve.
+              Good effort! Review your answers to see what you got right.
             </p>
           )}
           {classification === "Red" && (
-            <p>Keep practicing! Your skills will improve with time.</p>
+            <p>Thanks for taking part. Review the answers to learn more.</p>
           )}
         </div>
 
         <div className="result-actions">
           <button className="result-button" onClick={onRestart}>
-            Restart Assessment
+            Start again
           </button>
           <button className="result-button secondary" onClick={onViewResults}>
-            Review answers
+            Review your answers
           </button>
         </div>
       </div>

@@ -9,12 +9,11 @@ export default function ConsentModal({ onAccept, onClose }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Terms of Use and Privacy</h2>
+        <h2 className="modal-title">Before you begin</h2>
 
         <div className="modal-text">
           <p>
-            Before continuing, please accept our Terms of Use and Privacy
-            Policy.
+            Please review and accept the Terms of Use and Privacy Policy to continue.
           </p>
         </div>
 
@@ -25,7 +24,7 @@ export default function ConsentModal({ onAccept, onClose }) {
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
             />
-            <span>I accept the Terms of Use</span>
+            <span>I agree to the Terms of Use</span>
           </label>
 
           <label className="checkbox-label">
@@ -34,7 +33,7 @@ export default function ConsentModal({ onAccept, onClose }) {
               checked={privacyAccepted}
               onChange={(e) => setPrivacyAccepted(e.target.checked)}
             />
-            <span>I accept the Privacy Policy</span>
+            <span>I agree to the Privacy Policy</span>
           </label>
         </div>
 
@@ -42,9 +41,8 @@ export default function ConsentModal({ onAccept, onClose }) {
           <button
             className="modal-button secondary"
             onClick={onClose}
-            disabled={!canContinue}
           >
-            Cancel
+            Close
           </button>
 
           <button
@@ -52,7 +50,7 @@ export default function ConsentModal({ onAccept, onClose }) {
             onClick={onAccept}
             disabled={!canContinue}
           >
-            Continue
+            Agree and continue
           </button>
         </div>
       </div>
