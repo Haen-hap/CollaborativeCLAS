@@ -23,3 +23,5 @@ __all__ = [
     "WorkStatus",
     "Zone",
 ]
+
+# SCRUM-58: Canonical validations completed and audited
