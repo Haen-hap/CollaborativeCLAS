@@ -358,6 +358,108 @@ body {
   padding: 24px;
 }
 
+.session-warning,
+.session-storage-notice,
+.session-recovery-notice {
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 12px;
+  background: rgba(49, 46, 129, 0.24);
+  color: #e0e7ff;
+}
+
+.session-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+}
+
+.session-warning-title {
+  margin-bottom: 4px;
+  color: #f3f4f6;
+  font-size: 16px;
+}
+
+.session-warning p,
+.session-storage-notice {
+  color: #c7d2fe;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.session-warning-button,
+.session-state-button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-warning-button:hover,
+.session-state-button:hover {
+  background: var(--primary-hover);
+}
+
+.session-warning-button:focus-visible,
+.session-state-button:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 3px;
+}
+
+.session-storage-notice {
+  padding: 12px 16px;
+}
+
+.session-recovery-notice {
+  position: fixed;
+  z-index: 20;
+  top: 16px;
+  left: 50%;
+  width: min(calc(100% - 32px), 680px);
+  padding: 12px 16px;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow);
+}
+
+.session-state-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.session-state-card {
+  width: min(100%, 620px);
+  padding: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(17, 24, 39, 0.82);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.session-state-title {
+  margin-bottom: 14px;
+  color: #f3f4f6;
+  font-size: clamp(26px, 5vw, 34px);
+  line-height: 1.2;
+}
+
+.session-state-copy {
+  margin-bottom: 26px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
 .assessment-header {
   display: flex;
   flex-direction: column;
@@ -901,6 +1003,26 @@ body {
 
   .assessment-navigation {
     gap: 8px;
+  }
+
+  .session-warning {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .session-warning-button,
+  .session-state-button {
+    width: 100%;
+  }
+
+  .session-state-container {
+    padding: 16px;
+  }
+
+  .session-state-card {
+    padding: 30px 20px;
   }
 
   .assessment-nav-button {
