@@ -25,24 +25,49 @@ def upgrade() -> None:
     sa.Column('code', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('type', sa.Enum('KIOSK', 'WEB', name='accesspointtype'), nullable=False),
+    sa.CheckConstraint(
+        "code IN ('PTYK001', 'PTYK002', 'PTYK003', 'DIRECT_WEB')",
+        name='ck_access_points_code',
+    ),
+    sa.CheckConstraint("trim(name) <> ''", name='ck_access_points_name'),
+    sa.CheckConstraint(
+        "(code = 'DIRECT_WEB' AND type = 'WEB') OR "
+        "(code IN ('PTYK001', 'PTYK002', 'PTYK003') AND type = 'KIOSK')",
+        name='ck_access_points_code_type',
+    ),
     sa.PrimaryKeyConstraint('code')
     )
     op.create_table('zones',
     sa.Column('code', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
+    sa.CheckConstraint(
+        "(code = 'DECLINED' OR "
+        "(code ~ '^Z[0-9]{3}$' AND substring(code FROM 2)::integer BETWEEN 1 AND 36))",
+        name='ck_zones_code',
+    ),
+    sa.CheckConstraint("trim(name) <> ''", name='ck_zones_name'),
     sa.PrimaryKeyConstraint('code')
     )
     op.create_table('assessment_sessions',
     sa.Column('session_id', sa.Integer(), nullable=False),
     sa.Column('access_point_code', sa.String(), nullable=False),
     sa.Column('assisted_mode', sa.Boolean(), nullable=False),
-    sa.Column('age_range', sa.Enum('AGE_18_24', 'AGE_25_34', 'AGE_35_49', 'AGE_50_59', 'AGE_60_PLUS', name='agerange'), nullable=False),
+    sa.Column('age_range', sa.Enum('18_24', '25_34', '35_49', '50_59', '60_PLUS', name='agerange'), nullable=False),
     sa.Column('work_status', sa.Enum('FORMAL', 'INFORMAL', 'HOME', 'STUDENT', 'UNEMPLOYED', name='workstatus'), nullable=False),
     sa.Column('schooling_level', sa.Enum('PRIMARY_INCOMPLETE', 'PRIMARY_COMPLETE', 'SECONDARY_INCOMPLETE', 'SECONDARY_COMPLETE', 'TERTIARY', name='schoolinglevel'), nullable=False),
     sa.Column('zone_code', sa.String(), nullable=False),
     sa.Column('location_declined', sa.Boolean(), nullable=False),
     sa.Column('completion_status', sa.Enum('ABANDONED', 'COMPLETED', name='completionstatus'), nullable=False),
     sa.Column('duration_seconds', sa.Integer(), nullable=False),
+    sa.CheckConstraint(
+        "duration_seconds >= 0",
+        name='ck_assessment_sessions_duration_seconds',
+    ),
+    sa.CheckConstraint(
+        "(zone_code = 'DECLINED' AND location_declined = true) OR "
+        "(zone_code <> 'DECLINED' AND location_declined = false)",
+        name='ck_assessment_sessions_zone_location_declined',
+    ),
     sa.ForeignKeyConstraint(['access_point_code'], ['access_points.code'], ),
     sa.ForeignKeyConstraint(['zone_code'], ['zones.code'], ),
     sa.PrimaryKeyConstraint('session_id')
@@ -50,8 +75,13 @@ def upgrade() -> None:
     op.create_table('rewards',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('session_id', sa.Integer(), nullable=False),
-    sa.Column('trigger_type', sa.Enum('BEVERAGE_DISPENSER', 'WIFI_CREDENTIALS', 'POWER_STATION', 'NONE', name='triggertype'), nullable=False),
+    sa.Column('trigger_type', sa.Enum('BEVERAGE_DISPENSER', 'WIFI_CREDENTIAL', 'POWER_STATION', 'NONE', name='triggertype'), nullable=False),
     sa.Column('issued', sa.Boolean(), nullable=False),
+    sa.CheckConstraint(
+        "(issued = false AND trigger_type = 'NONE') OR "
+        "(issued = true AND trigger_type <> 'NONE')",
+        name='ck_rewards_issued_trigger_type',
+    ),
     sa.ForeignKeyConstraint(['session_id'], ['assessment_sessions.session_id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('session_id')
@@ -107,8 +137,40 @@ def upgrade() -> None:
 
         sa.Column(
             "literacy_classification",
-            sa.String(),
+            sa.Enum('RED', 'YELLOW', 'GREEN', name='literacyclassification'),
             nullable=False
+        ),
+        sa.CheckConstraint(
+            "c1_visual_signs_score BETWEEN 0 AND 2",
+            name="ck_assessment_results_c1_score",
+        ),
+        sa.CheckConstraint(
+            "c2_sentence_comprehension_score BETWEEN 0 AND 2",
+            name="ck_assessment_results_c2_score",
+        ),
+        sa.CheckConstraint(
+            "c3_mobile_icons_score BETWEEN 0 AND 2",
+            name="ck_assessment_results_c3_score",
+        ),
+        sa.CheckConstraint(
+            "c4_cybersecurity_score BETWEEN 0 AND 3",
+            name="ck_assessment_results_c4_score",
+        ),
+        sa.CheckConstraint(
+            "total_literacy_score BETWEEN 0 AND 9",
+            name="ck_assessment_results_total_score",
+        ),
+        sa.CheckConstraint(
+            "total_literacy_score = c1_visual_signs_score + "
+            "c2_sentence_comprehension_score + c3_mobile_icons_score + "
+            "c4_cybersecurity_score",
+            name="ck_assessment_results_total_matches_components",
+        ),
+        sa.CheckConstraint(
+            "(total_literacy_score BETWEEN 0 AND 3 AND literacy_classification = 'RED') OR "
+            "(total_literacy_score BETWEEN 4 AND 6 AND literacy_classification = 'YELLOW') OR "
+            "(total_literacy_score BETWEEN 7 AND 9 AND literacy_classification = 'GREEN')",
+            name="ck_assessment_results_score_classification",
         ),
 
         sa.ForeignKeyConstraint(
