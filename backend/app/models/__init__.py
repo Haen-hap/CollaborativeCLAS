@@ -9,6 +9,10 @@ from app.models.assessment_session import (
 )
 from app.models.rewards import Reward, TriggerType
 from app.models.zone import Zone
+from app.models.questions import Question
+from app.models.session_questions import SessionQuestion
+from app.models.session_answers import SessionAnswer
+from app.models.question_options import QuestionOption
 
 __all__ = [
     "AccessPoint",
