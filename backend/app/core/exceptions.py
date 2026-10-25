@@ -25,41 +25,38 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.warning(f"Validation error: {request.url.path} | "
-                   f"Errors: {exc.errors()}"
-                   )
+    logger.warning("Validation error | Path: %s | Error count: %s", request.url.path, len(exc.errors()))
+    safe_errors = [
+        {
+            "type": error.get("type", "validation_error"),
+            "loc": error.get("loc", ()),
+        }
+        for error in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
         content={"detail": "Invalid request data",
-                 "errors": exc.errors()
+                 "errors": safe_errors
                  },
 
     )
 
 async def integrity_error_handler(request: Request,ext: IntegrityError):
-    logger.error(f"Database integrity error | Path: {request.url.path} | ",
-                 exc_info=True
-                   )
+    logger.error("Database integrity error | Path: %s", request.url.path)
     return JSONResponse(
         status_code=409,
         content={"detail": "Database constraint violation"}
     )
 
 async def database_exception_handler(request:Request,ext: SQLAlchemyError):
-    logger.error(
-        f"Database Error | Path: {request.url.path} | ",
-        exc_info=True
-    )
+    logger.error("Database error | Path: %s", request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "Database error occurred"}
     )
 
 async def general_exception_handler(request:Request,ext: Exception):
-    logger.exception(
-        f"Unexpected Error | Path: {request.url.path} | ",
-        exc_info=True
-    )
+    logger.error("Unexpected error | Path: %s", request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"}
