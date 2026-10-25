@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.settings import settings
-from app.routers import db_health
+from app.routers import db_health,assessments
 import logging
 from app.core.logging_config import setup_logging
 from app.core.exceptions import (
@@ -16,6 +16,8 @@ from app.core.exceptions import (
 
 )
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.schemas import assessment
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -37,6 +39,7 @@ app.add_exception_handler(SQLAlchemyError, database_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 app.include_router(db_health.router)
+app.include_router(assessments.router)
 
 
 @app.get("/")

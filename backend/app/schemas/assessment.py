@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field,model_validator
 
 from app.models.assessment_session import (
     AgeRange,
@@ -19,25 +19,45 @@ class AssessmentSessionCreate(BaseModel):
     zone_code: str = Field(min_length=1, max_length=255)
     location_declined: bool
 
+    @model_validator(mode="after")
+    def validate_location(self):
+       if self.location_declined != (self.zone_code== "DECLINED"):
+           raise ValueError("Zone_code and location_declined must agree")
+       return self
+
 
 class AssessmentSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     session_id: int
     completion_status: CompletionStatus
 
+#
+# class AnswerSubmission(BaseModel):
+#     model_config = ConfigDict(extra="forbid")
+#
+#     question_id: int = Field(gt=0, strict=True)
+#     answer_value: int = Field(ge=0, strict=True)
+#
+#
+# class AnswerSubmissionResponse(BaseModel):
+#     session_id: int
+#     question_id: int
+#     accepted: bool
+#
+#
+# class AssessmentCompletionResponse(BaseModel):
+#     session_id: int
+#     completion_status: CompletionStatus
 
-class AnswerSubmission(BaseModel):
-    model_config = ConfigDict(extra="forbid")
 
-    question_id: int = Field(gt=0, strict=True)
-    answer_value: int = Field(ge=0, strict=True)
+class QuestionOptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    option_id: int
+    option_text: str
 
 
-class AnswerSubmissionResponse(BaseModel):
-    session_id: int
+class QuestionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     question_id: int
-    accepted: bool
-
-
-class AssessmentCompletionResponse(BaseModel):
-    session_id: int
-    completion_status: CompletionStatus
+    question_text: str
+    options: list[QuestionOptionResponse]
