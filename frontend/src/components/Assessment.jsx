@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { assessmentQuestions } from "../data/assessmentData";
 import {
   recordAssessmentActivity,
   updateAssessmentProgress,
@@ -7,30 +6,34 @@ import {
 
 export default function Assessment({
   session,
+  questions,
   persistenceAvailable,
   onSessionChange,
   onComplete,
+  isSubmitting = false,
+  submissionError = null,
+  onRetry,
 }) {
   const completionRequested = useRef(false);
-  const totalQuestions = assessmentQuestions.length;
+  const totalQuestions = questions.length;
   const currentQuestionIndex = session.currentQuestionIndex;
-  const currentQuestion = assessmentQuestions[currentQuestionIndex];
-  const selectedOption = session.answers[currentQuestion.id];
+  const currentQuestion = questions[currentQuestionIndex];
+  const selectedOption = session.answers[currentQuestion.question_id];
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
-  const handleSelectOption = (optionIndex) => {
+  const handleSelectOption = (optionId) => {
     onSessionChange((current) =>
       updateAssessmentProgress(current, {
         answers: {
           ...current.answers,
-          [currentQuestion.id]: optionIndex,
+          [currentQuestion.question_id]: optionId,
         },
       }),
     );
   };
 
-  const handleNext = () => {
-    if (selectedOption === undefined) {
+  const handleNext = async () => {
+    if (selectedOption === undefined || isSubmitting) {
       return;
     }
 
@@ -47,8 +50,12 @@ export default function Assessment({
       return;
     }
 
-    if (onComplete() !== false) {
-      completionRequested.current = true;
+    completionRequested.current = true;
+
+    const completed = await onComplete();
+
+    if (!completed) {
+      completionRequested.current = false;
     }
   };
 
@@ -71,10 +78,12 @@ export default function Assessment({
       {session.status === "warning" && (
         <section className="session-warning" role="alert">
           <div>
-            <h2 className="session-warning-title">Still working on your assessment?</h2>
+            <h2 className="session-warning-title">
+              Still working on your assessment?
+            </h2>
             <p>
-              Your session may expire due to inactivity. Continue the session now
-              if you’re still working.
+              Your session may expire due to inactivity. Continue the session
+              now if you’re still working.
             </p>
           </div>
           <button
@@ -89,8 +98,8 @@ export default function Assessment({
 
       {!persistenceAvailable && (
         <p className="session-storage-notice" role="status">
-          This browser can’t save your progress. If you reload this page, you may
-          need to start the assessment again.
+          This browser can’t save your progress. If you reload this page, you
+          may need to start the assessment again.
         </p>
       )}
 
@@ -113,37 +122,59 @@ export default function Assessment({
         </div>
       </header>
 
-      <section className="assessment-question-card" aria-labelledby="assessment-question">
+      <section
+        className="assessment-question-card"
+        aria-labelledby="assessment-question"
+      >
         <h1 id="assessment-question" className="assessment-question-text">
-          {currentQuestion.text}
+          {currentQuestion.question_text}
         </h1>
 
         <div className="assessment-options">
-          {currentQuestion.options.map((option, index) => (
+          {currentQuestion.options.map((option) => (
             <label
-              key={index}
+              key={option.option_id}
               className={`assessment-option ${
-                selectedOption === index ? "selected" : ""
+                selectedOption === option.option_id ? "selected" : ""
               }`}
             >
               <input
                 type="radio"
-                name={`question-${currentQuestion.id}`}
-                checked={selectedOption === index}
-                onChange={() => handleSelectOption(index)}
+                name={`question-${currentQuestion.question_id}`}
+                checked={selectedOption === option.option_id}
+                onChange={() => handleSelectOption(option.option_id)}
               />
-              <span className="option-text">{option}</span>
+              <span className="option-text">{option.option_text}</span>
             </label>
           ))}
         </div>
       </section>
+
+      {isSubmitting && (
+        <p className="assessment-status" role="status">
+          Saving your assessment…
+        </p>
+      )}
+
+      {submissionError && (
+        <section className="assessment-error" role="alert">
+          <p>{submissionError}</p>
+          <button
+            type="button"
+            className="assessment-nav-button secondary"
+            onClick={onRetry}
+          >
+            Try again
+          </button>
+        </section>
+      )}
 
       <nav className="assessment-navigation" aria-label="Assessment questions">
         <button
           type="button"
           className="assessment-nav-button secondary"
           onClick={handlePrevious}
-          disabled={currentQuestionIndex === 0}
+          disabled={currentQuestionIndex === 0 || isSubmitting}
         >
           Previous
         </button>
@@ -152,9 +183,13 @@ export default function Assessment({
           type="button"
           className="assessment-nav-button primary"
           onClick={handleNext}
-          disabled={selectedOption === undefined}
+          disabled={selectedOption === undefined || isSubmitting}
         >
-          {currentQuestionIndex === totalQuestions - 1 ? "Finish" : "Next"}
+          {isSubmitting
+            ? "Saving…"
+            : currentQuestionIndex === totalQuestions - 1
+              ? "Finish"
+              : "Next"}
         </button>
       </nav>
     </main>
