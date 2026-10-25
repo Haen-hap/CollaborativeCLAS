@@ -21,7 +21,7 @@ class Question(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "category IN ('R1', 'R2', 'R3', 'R4')",
+            "category IN ('R1', 'R2', 'R3')",
             name="ck_questions_category"
 
         ),
@@ -36,7 +36,7 @@ class Question(Base):
 
     @validates("category")
     def validate_category(self, key, value):
-        valid_categories = ['R1', 'R2', 'R3', 'R4']
+        valid_categories = ['R1', 'R2', 'R3']
         if value not in valid_categories:
             raise ValueError(f"Invalid category: {value}. Must be one of {valid_categories}")
         return value

@@ -42,6 +42,7 @@ class SchoolingLevel(str, enum.Enum):
 class CompletionStatus(str, enum.Enum):
     ABANDONED = "ABANDONED"
     COMPLETED = "COMPLETED"
+    IN_PROGRESS = "IN_PROGRESS"
 
 
 class AssessmentSession(Base):
