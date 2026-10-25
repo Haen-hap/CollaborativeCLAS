@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.settings import settings
-from app.routers import db_health,assessments
+from app.routers import analytics, assessments, db_health
 import logging
 from app.core.logging_config import setup_logging
 from app.core.exceptions import (
@@ -40,6 +40,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 app.include_router(db_health.router)
 app.include_router(assessments.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")
