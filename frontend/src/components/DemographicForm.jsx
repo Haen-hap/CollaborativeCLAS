@@ -1,79 +1,53 @@
 import { useState } from "react";
 
 const AGE_RANGES = [
-  "Under 18",
-  "18–24",
-  "25–34",
-  "35–44",
-  "45–54",
-  "55–64",
-  "65+",
+  { value: "18_24", label: "18–24" },
+  { value: "25_34", label: "25–34" },
+  { value: "35_49", label: "35–49" },
+  { value: "50_59", label: "50–59" },
+  { value: "60_PLUS", label: "60+" },
 ];
 
-export default function DemographicForm({ onComplete }) {
+const WORK_STATUSES = [
+  { value: "FORMAL", label: "Formal employment" },
+  { value: "INFORMAL", label: "Informal employment" },
+  { value: "HOME", label: "At home" },
+  { value: "STUDENT", label: "Student" },
+  { value: "UNEMPLOYED", label: "Unemployed" },
+];
+
+const SCHOOLING_LEVELS = [
+  { value: "PRIMARY_INCOMPLETE", label: "Primary school – incomplete" },
+  { value: "PRIMARY_COMPLETE", label: "Primary school – complete" },
+  { value: "SECONDARY_INCOMPLETE", label: "Secondary school – incomplete" },
+  { value: "SECONDARY_COMPLETE", label: "Secondary school – complete" },
+  { value: "TERTIARY", label: "Tertiary education" },
+];
+
+const ZONE_CODES = [
+  ...Array.from(
+    { length: 36 },
+    (_, index) => `Z${String(index + 1).padStart(3, "0")}`,
+  ),
+  "DECLINED",
+];
+
+export default function DemographicForm({ onComplete, submissionError }) {
   const [ageRange, setAgeRange] = useState("");
   const [gender, setGender] = useState("");
-  const [community, setCommunity] = useState("");
-  const [locationStatus, setLocationStatus] = useState("idle");
-  const [coordinates, setCoordinates] = useState(null);
-  const [locationError, setLocationError] = useState("");
-
-  function requestLocation() {
-    if (!navigator.geolocation) {
-      setLocationError("This browser does not support location sharing. You can enter your city or community below.");
-      setLocationStatus("manual");
-      return;
-    }
-
-    if (!window.isSecureContext) {
-      setLocationError("Location access requires HTTPS (or localhost). Open the app on localhost on this laptop, or use an HTTPS address.");
-      setLocationStatus("manual");
-      return;
-    }
-
-    setLocationStatus("requesting");
-    setLocationError("");
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: currentCoords }) => {
-        setCoordinates({
-          latitude: currentCoords.latitude,
-          longitude: currentCoords.longitude,
-        });
-        setLocationStatus("gps");
-      },
-      (error) => {
-        setCoordinates(null);
-        setLocationError(
-          error.code === error.PERMISSION_DENIED
-            ? "The browser denied location access. Check the site’s location permission in your browser settings and make sure Location is enabled for this device. You can enter your city or community instead."
-            : error.code === error.POSITION_UNAVAILABLE
-              ? "The device could not determine its location. Turn on Location services and try again, or enter your city or community instead."
-              : "The location request timed out. Check Location services and try again, or enter your city or community instead.",
-        );
-        setLocationStatus("manual");
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-    );
-  }
+  const [workStatus, setWorkStatus] = useState("");
+  const [schoolingLevel, setSchoolingLevel] = useState("");
+  const [zoneCode, setZoneCode] = useState("DECLINED");
 
   function handleSubmit(event) {
     event.preventDefault();
 
     onComplete({
-      ageRange: ageRange || null,
+      ageRange,
       gender: gender || null,
-      community: community.trim() || null,
-      location: coordinates,
-    });
-  }
-
-  function handleSkip() {
-    onComplete({
-      ageRange: null,
-      gender: null,
-      community: null,
-      location: null,
+      workStatus,
+      schoolingLevel,
+      zoneCode,
     });
   }
 
@@ -83,37 +57,44 @@ export default function DemographicForm({ onComplete }) {
       aria-labelledby="demographic-title"
     >
       <div className="demographic-card">
-        <span className="demographic-badge">Optional</span>
+        <span className="demographic-badge">Required</span>
 
         <h1 id="demographic-title" className="demographic-title">
           About you
         </h1>
 
         <p className="demographic-subtitle">
-          A few optional details help us understand literacy needs in your community.
+          A few details help us understand literacy needs in your community.
         </p>
 
         <div className="demographic-privacy-note">
-          Do not enter your name, ID number, email, or street address. You can skip any question and continue without sharing details.
+          Do not enter your name, ID number, email, or street address.
         </div>
+
+        {submissionError && (
+          <div className="demographic-privacy-note" role="alert">
+            {submissionError}
+          </div>
+        )}
 
         <form className="demographic-form" onSubmit={handleSubmit}>
           <div className="demographic-field">
             <label htmlFor="demographic-age">
               Your age range
-              <span className="demographic-optional">Optional</span>
+              <span className="demographic-optional">Required</span>
             </label>
 
             <select
               id="demographic-age"
               value={ageRange}
               onChange={(event) => setAgeRange(event.target.value)}
+              required
             >
               <option value="">Select your age range</option>
 
               {AGE_RANGES.map((range) => (
-                <option key={range} value={range}>
-                  {range}
+                <option key={range.value} value={range.value}>
+                  {range.label}
                 </option>
               ))}
             </select>
@@ -139,56 +120,75 @@ export default function DemographicForm({ onComplete }) {
           </div>
 
           <div className="demographic-field">
-            <label htmlFor="demographic-community">
-              Your city or community
-              <span className="demographic-optional">Optional</span>
+            <label htmlFor="demographic-work-status">
+              Your work status
+              <span className="demographic-optional">Required</span>
             </label>
 
-            <div className="demographic-location-actions">
-              <button
-                type="button"
-                className="demographic-location-button"
-                onClick={requestLocation}
-                disabled={locationStatus === "requesting"}
-              >
-                {locationStatus === "requesting" ? "Requesting location…" : "Use my current location"}
-              </button>
-              {locationStatus === "gps" && (
-                <span className="demographic-location-success" role="status">
-                  ✓ Current location detected using GPS
-                </span>
-              )}
-            </div>
-
-            {locationError && <p className="demographic-field-help" role="status">{locationError}</p>}
-
-            <input
-              id="demographic-community"
-              type="text"
-              value={community}
-              onChange={(event) => setCommunity(event.target.value)}
-              placeholder="Type a city or community"
-              maxLength={100}
-              aria-describedby="demographic-community-help"
-            />
-
-            <p
-              id="demographic-community-help"
-              className="demographic-field-help"
+            <select
+              id="demographic-work-status"
+              value={workStatus}
+              onChange={(event) => setWorkStatus(event.target.value)}
+              required
             >
-              Share your location with GPS or type a city or community. Do not enter a street or house number.
+              <option value="">Select an option</option>
+
+              {WORK_STATUSES.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="demographic-field">
+            <label htmlFor="demographic-schooling">
+              Your schooling level
+              <span className="demographic-optional">Required</span>
+            </label>
+
+            <select
+              id="demographic-schooling"
+              value={schoolingLevel}
+              onChange={(event) => setSchoolingLevel(event.target.value)}
+              required
+            >
+              <option value="">Select an option</option>
+
+              {SCHOOLING_LEVELS.map((level) => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="demographic-field">
+            <label htmlFor="demographic-zone">
+              Your zone
+              <span className="demographic-optional">Required</span>
+            </label>
+
+            <select
+              id="demographic-zone"
+              value={zoneCode}
+              onChange={(event) => setZoneCode(event.target.value)}
+              required
+            >
+              {ZONE_CODES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone === "DECLINED" ? "Prefer not to share location" : zone}
+                </option>
+              ))}
+            </select>
+
+            <p id="demographic-zone-help" className="demographic-field-help">
+              Select the zone where you live, or choose not to share your
+              location.
             </p>
           </div>
 
           <div className="demographic-actions">
-            <button
-              type="button"
-              className="demographic-button secondary"
-              onClick={handleSkip}
-            >
-              Skip
-            </button>
-
             <button type="submit" className="demographic-button primary">
               Continue to questions
             </button>
