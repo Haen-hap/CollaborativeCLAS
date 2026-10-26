@@ -12,6 +12,12 @@ export default function ResultScreen({ score, totalQuestions, onRestart, onViewR
     classificationColor = "#eab308";
   }
 
+  const resultExplanations = {
+    Red: "Keep practising — every step helps.",
+    Yellow: "A good start — a little more practice will help.",
+    Green: "Excellent! You use digital tools with confidence.",
+  };
+
   return (
     <div className="result-container">
       <div className="result-card">
@@ -41,18 +47,8 @@ export default function ResultScreen({ score, totalQuestions, onRestart, onViewR
           </div>
         </div>
 
-        <div className="result-message">
-          {classification === "Green" && (
-            <p>Great work! You answered most questions correctly.</p>
-          )}
-          {classification === "Yellow" && (
-            <p>
-              Good effort! Review your answers to see what you got right.
-            </p>
-          )}
-          {classification === "Red" && (
-            <p>Thanks for taking part. Review the answers to learn more.</p>
-          )}
+        <div className="result-message" aria-live="polite">
+          <p>{resultExplanations[classification]}</p>
         </div>
 
         <div className="result-actions">
