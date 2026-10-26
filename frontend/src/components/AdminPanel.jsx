@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
-import { adminDashboardMockSubmissions } from "../data/adminDashboardMockData";
+import { getAdminDashboardStats } from "../api/api";
 
 const adminPages = {
   dashboard: {
@@ -27,7 +27,39 @@ const adminPages = {
 
 export default function AdminPanel() {
   const [activePage, setActivePage] = useState("dashboard");
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(null);
   const currentPage = adminPages[activePage];
+
+  const loadDashboardStats = useCallback(async (signal) => {
+    setDashboardLoading(true);
+    setDashboardError(null);
+    setDashboardStats(null);
+
+    try {
+      const stats = await getAdminDashboardStats({ signal });
+      setDashboardStats(stats);
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        setDashboardError(error.message);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setDashboardLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activePage !== "dashboard") {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    loadDashboardStats(controller.signal);
+    return () => controller.abort();
+  }, [activePage, loadDashboardStats]);
 
   return (
     <div className="admin-layout">
@@ -70,7 +102,9 @@ export default function AdminPanel() {
             <p className="admin-page-description">{currentPage.description}</p>
           </div>
 
-          <span className="admin-preview-badge">UI preview</span>
+          <span className="admin-preview-badge">
+            {activePage === "dashboard" && dashboardStats ? "Live data" : "Admin workspace"}
+          </span>
         </header>
 
         <section
@@ -82,8 +116,10 @@ export default function AdminPanel() {
 
           {activePage === "dashboard" ? (
             <AdminDashboard
-              submissions={adminDashboardMockSubmissions}
-              isDemo={true}
+              stats={dashboardStats}
+              isLoading={dashboardLoading}
+              error={dashboardError}
+              onRefresh={() => loadDashboardStats()}
             />
           ) : (
             <>
