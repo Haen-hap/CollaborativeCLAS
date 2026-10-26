@@ -1,73 +1,76 @@
 import "./AdminDashboard.css";
 
 const classificationOptions = [
-  { label: "Red", className: "red" },
-  { label: "Yellow", className: "yellow" },
-  { label: "Green", className: "green" },
+  { key: "red", label: "Red", className: "red" },
+  { key: "yellow", label: "Yellow", className: "yellow" },
+  { key: "green", label: "Green", className: "green" },
 ];
 
-export default function AdminDashboard({ submissions = [], isDemo = false }) {
-  const records = Array.isArray(submissions) ? submissions : [];
-  const totalSubmissions = records.length;
+export default function AdminDashboard({
+  stats,
+  isLoading,
+  error,
+  onRefresh,
+}) {
+  if (isLoading) {
+    return (
+      <div className="admin-dashboard" aria-busy="true">
+        <p className="admin-dashboard-state" role="status">
+          Loading dashboard statistics…
+        </p>
+      </div>
+    );
+  }
 
-  const scoredSubmissions = records.filter(
-    (submission) =>
-      Number.isFinite(submission?.score) &&
-      Number.isFinite(submission?.totalQuestions) &&
-      submission.totalQuestions > 0 &&
-      submission.score >= 0 &&
-      submission.score <= submission.totalQuestions,
-  );
+  if (error) {
+    return (
+      <div className="admin-dashboard">
+        <div className="admin-dashboard-error" role="alert">
+          <p>Could not load live dashboard statistics: {error}</p>
+          <button className="admin-dashboard-refresh" onClick={onRefresh}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const averageScore =
-    scoredSubmissions.length > 0
-      ? scoredSubmissions.reduce(
-          (total, submission) =>
-            total + (submission.score / submission.totalQuestions) * 100,
-          0,
-        ) / scoredSubmissions.length
-      : null;
+  if (!stats) {
+    return null;
+  }
 
-  const distribution = classificationOptions.map((option) => {
-    const count = records.filter(
-      (submission) => submission?.classification === option.label,
-    ).length;
-
-    return {
-      ...option,
-      count,
-      percentage: totalSubmissions > 0 ? (count / totalSubmissions) * 100 : 0,
-    };
-  });
-
-  const classifiedCount = distribution.reduce(
-    (total, category) => total + category.count,
-    0,
-  );
-
-  const unclassifiedCount = totalSubmissions - classifiedCount;
-
-  const highestCount = Math.max(
-    ...distribution.map((category) => category.count),
-  );
-
-  const leadingCategories =
+  const distribution = classificationOptions.map((option) => ({
+    ...option,
+    count: stats.classification_distribution[option.key],
+    percentage:
+      stats.total_submissions > 0
+        ? (stats.classification_distribution[option.key] /
+            stats.total_submissions) *
+          100
+        : 0,
+  }));
+  const highestCount = Math.max(...distribution.map((category) => category.count));
+  const leaders =
     highestCount > 0
       ? distribution.filter((category) => category.count === highestCount)
       : [];
-
   const mostCommonClassification =
-    leadingCategories.length === 0
-      ? "No data"
-      : leadingCategories.map((category) => category.label).join(" / ");
+    leaders.length === 0 ? "No data" : leaders.map((item) => item.label).join(" / ");
 
   return (
     <div className="admin-dashboard">
-      {isDemo && (
-        <p className="admin-dashboard-demo-note">
-          Demo data — these statistics do not represent live submissions.
+      <div className="admin-dashboard-toolbar">
+        <p className="admin-dashboard-scope">
+          Statistics include completed assessments with saved results only.
         </p>
-      )}
+        <button
+          className="admin-dashboard-refresh"
+          type="button"
+          onClick={onRefresh}
+        >
+          Refresh data
+        </button>
+      </div>
 
       <section
         className="admin-dashboard-stats"
@@ -75,21 +78,21 @@ export default function AdminDashboard({ submissions = [], isDemo = false }) {
       >
         <article className="admin-stat-card">
           <h3 className="admin-stat-label">Total submissions</h3>
-          <p className="admin-stat-value">{totalSubmissions}</p>
+          <p className="admin-stat-value">{stats.total_submissions}</p>
           <p className="admin-stat-help">
-            Number of submissions in the supplied dataset.
+            Completed assessments with saved results.
           </p>
         </article>
 
         <article className="admin-stat-card">
           <h3 className="admin-stat-label">Average score</h3>
           <p className="admin-stat-value">
-            {averageScore === null ? "—" : `${averageScore.toFixed(1)}%`}
+            {stats.average_score_percentage === null
+              ? "—"
+              : `${stats.average_score_percentage.toFixed(1)}%`}
           </p>
           <p className="admin-stat-help">
-            {averageScore === null
-              ? "No valid scores available."
-              : `Mean of individual percentage scores across ${scoredSubmissions.length} valid submissions.`}
+            Mean percentage correct, based on each assessment’s question count.
           </p>
         </article>
 
@@ -99,11 +102,9 @@ export default function AdminDashboard({ submissions = [], isDemo = false }) {
             {mostCommonClassification}
           </p>
           <p className="admin-stat-help">
-            {leadingCategories.length === 0
-              ? "No recognized classifications available."
-              : leadingCategories.length > 1
-                ? `Tied at ${highestCount} submissions per category.`
-                : `${highestCount} submissions in this category.`}
+            {leaders.length === 0
+              ? "No completed results to classify yet."
+              : `${highestCount} completed ${highestCount === 1 ? "assessment" : "assessments"}.`}
           </p>
         </article>
       </section>
@@ -114,16 +115,18 @@ export default function AdminDashboard({ submissions = [], isDemo = false }) {
       >
         <header className="admin-distribution-header">
           <h3 id="admin-distribution-title">Classification distribution</h3>
-          <p>Counts and percentages of all supplied submissions.</p>
+          <p>Counts and percentages of completed assessments with saved results.</p>
         </header>
 
-        {totalSubmissions === 0 ? (
-          <p className="admin-dashboard-empty">No submissions available yet.</p>
+        {stats.total_submissions === 0 ? (
+          <p className="admin-dashboard-empty" role="status">
+            No completed assessments are available yet.
+          </p>
         ) : (
           <ul className="admin-distribution-list">
             {distribution.map((category) => (
               <li
-                key={category.label}
+                key={category.key}
                 className={`admin-distribution-item admin-category-${category.className}`}
               >
                 <div className="admin-distribution-row">
@@ -131,31 +134,19 @@ export default function AdminDashboard({ submissions = [], isDemo = false }) {
                     <span className="admin-category-dot" aria-hidden="true" />
                     {category.label}
                   </span>
-
                   <span className="admin-distribution-value">
                     {category.count} ({category.percentage.toFixed(1)}%)
                   </span>
                 </div>
-
                 <div className="admin-distribution-track" aria-hidden="true">
                   <div
                     className="admin-distribution-fill"
-                    style={{
-                      width: `${category.percentage}%`,
-                    }}
+                    style={{ width: `${category.percentage}%` }}
                   />
                 </div>
               </li>
             ))}
           </ul>
-        )}
-
-        {unclassifiedCount > 0 && (
-          <p className="admin-dashboard-data-note">
-            {unclassifiedCount} submissions have a missing or unrecognized
-            classification. They are included in the total but not shown as a
-            colored category.
-          </p>
         )}
       </section>
     </div>

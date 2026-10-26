@@ -74,3 +74,8 @@ export async function completeAssessmentSession(sessionId) {
 
   return handleResponse(response, "Failed to complete assessment");
 }
+
+export async function getAdminDashboardStats({ signal } = {}) {
+  const response = await fetch(`${API_URL}/admin/dashboard/stats`, { signal });
+  return handleResponse(response, "Failed to load dashboard statistics");
+}
