@@ -16,7 +16,6 @@ import Assessment from "./components/Assessment";
 import ResultScreen from "./components/ResultScreen";
 import QrEntryPage from "./components/QrEntryPage";
 import AdminPanel from "./components/AdminPanel";
-import Dashboard from "./components/Dashboard";
 import "./App.css";
 
 function App() {
@@ -25,7 +24,6 @@ function App() {
   const [backendSession, setBackendSession] = useState(null);
   const [backendQuestions, setBackendQuestions] = useState([]);
   const [assessmentResult, setAssessmentResult] = useState(null);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
   const [session, setSession] = useState(null);
@@ -134,8 +132,11 @@ function App() {
   };
 
   const handleRestart = () => {
+    if (persistenceAvailable) {
+      clearAssessmentSession();
+    }
+    setHasConsent(false);
     setAssessmentResult(null);
-    setShowDashboard(false);
     setBackendSession(null);
     setBackendQuestions([]);
     setSession(null);
@@ -180,21 +181,9 @@ function App() {
     );
   }
 
-  if (showDashboard) {
-    return (
-      <Dashboard
-        result={assessmentResult}
-        onBack={() => setShowDashboard(false)}
-      />
-    );
-  }
-
   return (
     <ResultScreen
-      score={assessmentResult.score}
-      totalQuestions={assessmentResult.totalQuestions}
       onRestart={handleRestart}
-      onViewResults={() => setShowDashboard(true)}
     />
   );
 }
