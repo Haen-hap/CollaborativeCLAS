@@ -9,11 +9,12 @@ from app.models.assessment_session import (
     SchoolingLevel,
     WorkStatus,
 )
+from app.models.game_session import GameSession
 from app.models.question_options import QuestionOption
 from app.models.questions import Question
 from app.models.session_answers import SessionAnswer
 from app.models.session_questions import SessionQuestion
-from app.models.zone import Zone
+from app.models.zone import Kiosk, Zone
 
 
 def create_session(session_id, access_point_code, zone_code, status):
@@ -144,11 +145,93 @@ def test_summary_aggregates_sessions_results_and_classification_distribution(
     assert data["total_answers"] == 2
     assert data["total_submissions"] == 3
     assert data["average_score_percentage"] == 55.6
+    assert data["category_averages"] == {
+        "c1_visual_signs": 1.7,
+        "c2_sentence_comprehension": 1.0,
+        "c3_mobile_icons": 1.0,
+        "c4_cybersecurity": 1.3,
+    }
     assert data["most_common_classifications"] == ["Red", "Yellow", "Green"]
     assert data["classification_distribution"] == [
         {"classification": "Red", "count": 1, "percentage": 33.3},
         {"classification": "Yellow", "count": 1, "percentage": 33.3},
         {"classification": "Green", "count": 1, "percentage": 33.3},
+    ]
+
+
+def test_summary_aggregates_game_sessions(db_session, test_client):
+    zone = Zone(code="Z001", name="Curundú")
+    kiosk = Kiosk(code="DIRECT_WEB", name="Acceso directo web", zone_code="Z001")
+    db_session.add_all([zone, kiosk])
+    db_session.flush()
+    db_session.add_all(
+        [
+            GameSession(
+                session_id="SES-GAME-1",
+                kiosk_id="DIRECT_WEB",
+                origin="UNKNOWN",
+                assisted_mode=False,
+                age_range="25_34",
+                work_status="FORMAL",
+                schooling_level="SECONDARY_COMPLETE",
+                zone_code="Z001",
+                c1_visual_signs_score=2,
+                c2_sentence_comprehension_score=2,
+                c3_mobile_icons_score=2,
+                c4_cybersecurity_score=3,
+                total_literacy_score=9,
+                internal_zone_classification="GREEN",
+                completion_status="COMPLETED",
+                last_step="step_17",
+                duration_seconds=80,
+                reward_issued=True,
+                iot_trigger_type="WIFI_CREDENTIAL",
+                repeat_device=False,
+            ),
+            GameSession(
+                session_id="SES-GAME-2",
+                kiosk_id="DIRECT_WEB",
+                origin="UNKNOWN",
+                assisted_mode=False,
+                age_range="35_49",
+                work_status="INFORMAL",
+                schooling_level="PRIMARY_COMPLETE",
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=2,
+                total_literacy_score=5,
+                internal_zone_classification="YELLOW",
+                completion_status="COMPLETED",
+                last_step="step_17",
+                duration_seconds=90,
+                reward_issued=False,
+                iot_trigger_type="NONE",
+                repeat_device=True,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = test_client.get("/analytics/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_assessments"] == 2
+    assert data["completed_assessments"] == 2
+    assert data["abandoned_assessments"] == 0
+    assert data["total_submissions"] == 2
+    assert data["average_score_percentage"] == 77.8
+    assert data["category_averages"] == {
+        "c1_visual_signs": 1.5,
+        "c2_sentence_comprehension": 1.5,
+        "c3_mobile_icons": 1.5,
+        "c4_cybersecurity": 2.5,
+    }
+    assert data["classification_distribution"] == [
+        {"classification": "Red", "count": 0, "percentage": 0.0},
+        {"classification": "Yellow", "count": 1, "percentage": 50.0},
+        {"classification": "Green", "count": 1, "percentage": 50.0},
     ]
 
 
@@ -174,6 +257,12 @@ def test_empty_dataset_returns_zero_counts_and_no_average(empty_analytics_api):
     assert data["total_answers"] == 0
     assert data["total_submissions"] == 0
     assert data["average_score_percentage"] is None
+    assert data["category_averages"] == {
+        "c1_visual_signs": 0.0,
+        "c2_sentence_comprehension": 0.0,
+        "c3_mobile_icons": 0.0,
+        "c4_cybersecurity": 0.0,
+    }
     assert data["most_common_classifications"] == []
     assert data["classification_distribution"] == [
         {"classification": "Red", "count": 0, "percentage": 0.0},
@@ -197,6 +286,7 @@ def test_summary_contains_only_aggregates_and_no_personal_data(analytics_api):
         "total_answers",
         "total_submissions",
         "average_score_percentage",
+        "category_averages",
         "most_common_classifications",
         "classification_distribution",
     }

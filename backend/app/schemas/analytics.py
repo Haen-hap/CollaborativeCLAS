@@ -54,5 +54,13 @@ class LegacyAnalyticsSummaryResponse(BaseModel):
     total_answers: int = Field(ge=0)
     total_submissions: int = Field(ge=0)
     average_score_percentage: float | None = Field(default=None, ge=0, le=100)
+    category_averages: CategoryAverages = Field(
+        default_factory=lambda: CategoryAverages(
+            c1_visual_signs=0.0,
+            c2_sentence_comprehension=0.0,
+            c3_mobile_icons=0.0,
+            c4_cybersecurity=0.0,
+        )
+    )
     most_common_classifications: list[str]
     classification_distribution: list[ClassificationDistributionItem]

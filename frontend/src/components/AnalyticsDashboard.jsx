@@ -15,15 +15,15 @@ const LIVE_SOURCE = "LIVE_API";
 const SIMULATED_SOURCE = "SIMULATED_50_SESSIONS";
 
 const CATEGORY_META = [
-  { key: "c1_visual_signs", label: "C1", name: "Señales visuales", max: 3 },
+  { key: "c1_visual_signs", label: "C1", name: "Señales visuales", max: 2 },
   {
     key: "c2_sentence_comprehension",
     label: "C2",
     name: "Comprensión de oraciones",
-    max: 3,
+    max: 2,
   },
   { key: "c3_mobile_icons", label: "C3", name: "Iconos móviles", max: 2 },
-  { key: "c4_cybersecurity", label: "C4", name: "Ciberseguridad", max: 2 },
+  { key: "c4_cybersecurity", label: "C4", name: "Ciberseguridad", max: 3 },
 ];
 
 const ZONE_META = [
@@ -159,12 +159,21 @@ function normalizeLiveSummary(summary) {
         yellow: getCount("yellow"),
         green: getCount("green"),
       },
-      category_averages: {
-        c1_visual_signs: round(avgPct * 3),
-        c2_sentence_comprehension: round(avgPct * 3),
-        c3_mobile_icons: round(avgPct * 2),
-        c4_cybersecurity: round(avgPct * 2),
-      },
+      category_averages: summary.category_averages
+        ? {
+            c1_visual_signs: round(summary.category_averages.c1_visual_signs),
+            c2_sentence_comprehension: round(
+              summary.category_averages.c2_sentence_comprehension,
+            ),
+            c3_mobile_icons: round(summary.category_averages.c3_mobile_icons),
+            c4_cybersecurity: round(summary.category_averages.c4_cybersecurity),
+          }
+        : {
+            c1_visual_signs: round(avgPct * 2),
+            c2_sentence_comprehension: round(avgPct * 2),
+            c3_mobile_icons: round(avgPct * 2),
+            c4_cybersecurity: round(avgPct * 3),
+          },
     };
   }
 
@@ -410,7 +419,7 @@ export default function AnalyticsDashboard() {
           ["Sesiones totales", total, "Participación acumulada"],
           ["Tasa de finalización", `${round(metrics.completionRate)}%`, "Conversión del flujo"],
           ["Tasa de abandono", `${round(metrics.abandonmentRate)}%`, "Pérdida antes de completar"],
-          ["Puntaje global promedio", `${round(metrics.globalAverage)} / 10`, "Promedio de competencias"],
+          ["Puntaje global promedio", `${round(metrics.globalAverage)} / 9`, "Promedio de competencias"],
         ].map(([label, value, detail]) => (
           <article className="analytics-kpi-card" key={label}>
             <span>{label}</span>

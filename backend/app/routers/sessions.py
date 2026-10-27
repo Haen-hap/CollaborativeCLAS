@@ -10,10 +10,14 @@ from app.core.database import get_db
 from app.core.settings import settings
 from app.core.zones_data import KIOSKS, ZONES
 from app.models.game_session import GameSession
+from app.models.zone import Kiosk, Zone
 from app.schemas.session import SessionIn, SessionOut
 from app.services.scoring import classify
 
 router = APIRouter(prefix="/api", tags=["sessions"])
+
+OFFICIAL_KIOSK_MAP = {c: (n, z) for c, n, z in KIOSKS}
+OFFICIAL_ZONE_MAP = dict(ZONES)
 
 
 def require_pin(x_dashboard_pin: Optional[str] = Header(default=None)) -> None:
@@ -24,6 +28,15 @@ def require_pin(x_dashboard_pin: Optional[str] = Header(default=None)) -> None:
 @router.post("/sessions", response_model=SessionOut)
 def upsert_session(payload: SessionIn, response: Response, db: Session = Depends(get_db)):
     """Guarda (o actualiza) una sesión anónima. Idempotente por session_id: la PWA puede reintentar sin duplicar."""
+    if payload.kiosk_id in OFFICIAL_KIOSK_MAP and not db.get(Kiosk, payload.kiosk_id):
+        for z_code, z_name in ZONES:
+            if not db.get(Zone, z_code):
+                db.add(Zone(code=z_code, name=z_name))
+        db.flush()
+        k_name, k_zone = OFFICIAL_KIOSK_MAP[payload.kiosk_id]
+        db.add(Kiosk(code=payload.kiosk_id, name=k_name, zone_code=k_zone))
+        db.flush()
+
     data = payload.model_dump()
     total = sum(data[k] for k in (
         "c1_visual_signs_score", "c2_sentence_comprehension_score", "c3_mobile_icons_score", "c4_cybersecurity_score"))
