@@ -201,19 +201,20 @@ def test_answer_with_wrong_option(db_session, assigned_question, question):
         question_text="Choose the correct word."
 
     )
-    other_question_options = [
-        QuestionOption(
-            option_text="Water"
-            , is_correct=True
-        )
-    ]
     db_session.add(other_question)
+    db_session.flush()
+    unrelated_option = QuestionOption(
+        question_id=other_question.id,
+        option_text="Water",
+        is_correct=True,
+    )
+    db_session.add(unrelated_option)
     db_session.flush()
 
     wrong_answer = SessionAnswer(
         session_id=assigned_question.session_id,
         question_id=question.id,
-        option_id=other_question_options[0].id
+        option_id=unrelated_option.id,
     )
     db_session.add(wrong_answer)
     with pytest.raises(IntegrityError):
