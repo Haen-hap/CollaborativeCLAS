@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.settings import settings
-from app.routers import analytics, assessments, db_health
+from app.routers import db_health, assessments, analytics
 import logging
 from app.core.logging_config import setup_logging
 from app.core.exceptions import (
@@ -13,7 +13,6 @@ from app.core.exceptions import (
     general_exception_handler,
     integrity_error_handler,
     validation_exception_handler
-
 )
 from fastapi.middleware.cors import CORSMiddleware
 
