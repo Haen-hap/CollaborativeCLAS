@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import CheckConstraint, Column, Enum, String
-from sqlalchemy.orm import Relationship, validates
+from sqlalchemy.orm import relationship, validates
 
 from app.core.database import Base
 
@@ -35,7 +35,7 @@ class AccessPoint(Base):
         ),
         nullable=False,
     )
-    sessions = Relationship("AssessmentSession", back_populates="access_point")
+    sessions = relationship("AssessmentSession", back_populates="access_point")
 
     @validates("code")
     def validate_code(self, key, value):

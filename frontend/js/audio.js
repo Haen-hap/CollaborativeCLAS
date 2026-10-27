@@ -1,0 +1,4 @@
+// ---- audio
+let AC;const tone=(f=660,d=.12,t=0)=>{try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(AC.destination);const s=AC.currentTime+t;o.start(s);g.gain.exponentialRampToValueAtTime(.001,s+d);o.stop(s+d)}catch(e){}};
+const say=t=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);const vs=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));const v=vs.find(v=>/es[-_](MX|US|419|PA)/i.test(v.lang))||vs[0];if(v)u.voice=v;u.lang=v?v.lang:"es-MX";u.rate=.9;speechSynthesis.speak(u)}catch(e){}};
+const spk=`<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z M16 8a5 5 0 010 8 M18.5 5.5a9 9 0 010 13" stroke="var(--blue)" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;

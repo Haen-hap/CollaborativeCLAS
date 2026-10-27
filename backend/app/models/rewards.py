@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import Boolean, CheckConstraint, Column, Enum, ForeignKey, Integer
-from sqlalchemy.orm import Relationship, validates
+from sqlalchemy.orm import relationship, validates
 
 from app.core.database import Base
 
@@ -36,7 +36,7 @@ class Reward(Base):
         nullable=False,
     )
     issued = Column(Boolean, nullable=False)
-    session = Relationship("AssessmentSession", back_populates="reward", uselist=False)
+    session = relationship("AssessmentSession", back_populates="reward", uselist=False)
 
     @validates("trigger_type")
     def validate_trigger_type(self, key, value):

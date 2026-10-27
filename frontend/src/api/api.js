@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 async function handleResponse(response, fallbackError) {
   if (!response.ok) {
@@ -73,6 +73,11 @@ export async function completeAssessmentSession(sessionId) {
   );
 
   return handleResponse(response, "Failed to complete assessment");
+}
+
+export async function getAnalyticsSummary() {
+  const response = await fetch(`${API_URL}/analytics/summary`);
+  return handleResponse(response, "Failed to load analytics summary");
 }
 
 export async function getAdminDashboardStats({ signal } = {}) {

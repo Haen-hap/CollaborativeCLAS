@@ -1,130 +1,58 @@
-from sqlalchemy import case, distinct, func, select, true
-from sqlalchemy.orm import Session
-
-from app.models.assessment_results import AssessmentResult, LiteracyClassification
-from app.models.assessment_session import AssessmentSession, CompletionStatus
-from app.models.session_answers import SessionAnswer
-from app.schemas.analytics import (
-    AnalyticsSummaryResponse,
-    ClassificationDistributionItem,
-)
+from pydantic import BaseModel, ConfigDict, Field
 
 
-CLASSIFICATION_LABELS = {
-    LiteracyClassification.RED: "Red",
-    LiteracyClassification.YELLOW: "Yellow",
-    LiteracyClassification.GREEN: "Green",
-}
+class FunnelStats(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    total_sessions: int = Field(ge=0)
+    completed_sessions: int = Field(ge=0)
+    abandoned_sessions: int = Field(ge=0)
 
 
-def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
-    """Return aggregate dashboard metrics for the current assessment."""
-    session_stats = select(
-        func.count(AssessmentSession.session_id).label("total_assessments"),
-        func.count(
-            case(
-                (AssessmentSession.completion_status == CompletionStatus.COMPLETED, 1)
-            )
-        ).label("completed_assessments"),
-        func.count(
-            case(
-                (AssessmentSession.completion_status == CompletionStatus.IN_PROGRESS, 1)
-            )
-        ).label("in_progress_assessments"),
-        func.count(
-            case(
-                (AssessmentSession.completion_status == CompletionStatus.ABANDONED, 1)
-            )
-        ).label("abandoned_assessments"),
-        func.count(
-            case(
-                (
-                    ~select(1)
-                    .where(SessionAnswer.session_id == AssessmentSession.session_id)
-                    .exists(),
-                    1,
-                )
-            )
-        ).label("assessments_without_answers"),
-    ).cte("session_stats")
+class ClassificationStats(BaseModel):
+    model_config = ConfigDict(strict=True)
 
-    answer_stats = select(
-        func.count(SessionAnswer.question_id).label("total_answers"),
-        func.count(distinct(SessionAnswer.session_id)).label("sessions_with_answers"),
-    ).cte("answer_stats")
+    red: int = Field(ge=0)
+    yellow: int = Field(ge=0)
+    green: int = Field(ge=0)
 
-    result_stats = select(
-        func.count(AssessmentResult.session_id).label("total_submissions"),
-        func.round(
-            func.avg(AssessmentResult.total_literacy_score * 100.0 / 9), 1
-        ).label("average_score_percentage"),
-    ).cte("result_stats")
 
-    summary_query = (
-        select(
-            session_stats.c.total_assessments,
-            session_stats.c.completed_assessments,
-            session_stats.c.in_progress_assessments,
-            session_stats.c.abandoned_assessments,
-            session_stats.c.assessments_without_answers,
-            answer_stats.c.total_answers,
-            answer_stats.c.sessions_with_answers,
-            result_stats.c.total_submissions,
-            result_stats.c.average_score_percentage,
-        )
-        .select_from(
-            session_stats.join(answer_stats, true()).join(result_stats, true())
-        )
-    )
-    summary = db.execute(summary_query).one()
+class CategoryAverages(BaseModel):
+    model_config = ConfigDict(strict=True)
 
-    classification_count = func.count(AssessmentResult.session_id)
-    distribution_rows = db.execute(
-        select(
-            AssessmentResult.literacy_classification,
-            classification_count.label("count"),
-            func.round(
-                classification_count
-                * 100.0
-                / func.nullif(func.sum(classification_count).over(), 0),
-                1,
-            ).label("percentage"),
-            (classification_count == func.max(classification_count).over()).label(
-                "is_most_common"
-            ),
-        ).group_by(AssessmentResult.literacy_classification)
-    ).all()
-    counts_by_classification = {
-        row.literacy_classification: row for row in distribution_rows
-    }
+    c1_visual_signs: float = Field(ge=0, le=2)
+    c2_sentence_comprehension: float = Field(ge=0, le=2)
+    c3_mobile_icons: float = Field(ge=0, le=2)
+    c4_cybersecurity: float = Field(ge=0, le=3)
 
-    result_count = summary.total_submissions
-    distribution = []
-    most_common_classifications = []
-    for classification in LiteracyClassification:
-        row = counts_by_classification.get(classification)
-        count = row.count if row is not None else 0
-        percentage = float(row.percentage) if row is not None else 0.0
-        distribution.append(
-            ClassificationDistributionItem(
-                classification=CLASSIFICATION_LABELS[classification],
-                count=count,
-                percentage=percentage,
-            )
-        )
-        if row is not None and row.is_most_common:
-            most_common_classifications.append(CLASSIFICATION_LABELS[classification])
 
-    return AnalyticsSummaryResponse(
-        total_assessments=summary.total_assessments,
-        completed_assessments=summary.completed_assessments,
-        in_progress_assessments=summary.in_progress_assessments,
-        abandoned_assessments=summary.abandoned_assessments,
-        assessments_without_answers=summary.assessments_without_answers,
-        sessions_with_answers=summary.sessions_with_answers,
-        total_answers=summary.total_answers,
-        total_submissions=result_count,
-        average_score_percentage=summary.average_score_percentage,
-        most_common_classifications=most_common_classifications,
-        classification_distribution=distribution,
-    )
+class AnalyticsSummaryResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    funnel: FunnelStats
+    classifications: ClassificationStats
+    category_averages: CategoryAverages
+
+
+class ClassificationDistributionItem(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    classification: str
+    count: int = Field(ge=0)
+    percentage: float = Field(ge=0, le=100)
+
+
+class LegacyAnalyticsSummaryResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    total_assessments: int = Field(ge=0)
+    completed_assessments: int = Field(ge=0)
+    in_progress_assessments: int = Field(ge=0)
+    abandoned_assessments: int = Field(ge=0)
+    assessments_without_answers: int = Field(ge=0)
+    sessions_with_answers: int = Field(ge=0)
+    total_answers: int = Field(ge=0)
+    total_submissions: int = Field(ge=0)
+    average_score_percentage: float | None = Field(default=None, ge=0, le=100)
+    most_common_classifications: list[str]
+    classification_distribution: list[ClassificationDistributionItem]

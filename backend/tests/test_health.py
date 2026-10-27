@@ -15,10 +15,10 @@ def test_health_check():
 def test_cors():
     respone = client.options(
         "/health/",
-        headers={"Origin": settings.frontend_origins[0],
+        headers={"Origin": settings.cors_list[0],
                  "Access-Control-Request-Method": "GET"
                  },
 
     )
     assert respone.status_code == 200
-    assert respone.headers["Access-Control-Allow-Origin"] == settings.frontend_origins[0]
+    assert respone.headers["Access-Control-Allow-Origin"] == settings.cors_list[0]

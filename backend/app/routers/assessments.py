@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 import logging
 
 from app.core.database import get_db
 from app.models.assessment_session import AssessmentSession
+from app.models.session_answers import SessionAnswer
 from app.schemas.assessment import (
     AnswerSubmission,
     AnswerSubmissionResponse,
@@ -55,18 +56,23 @@ def get_assessment_questions(
 def submit_assessment_answer(
     session_id: int,
     payload: AnswerSubmission,
+    response: Response,
     db: Session = Depends(get_db),
 ) -> AnswerSubmissionResponse:
+    existing_answer = db.get(SessionAnswer, (session_id, payload.question_id))
     answer = submit_answer(
         db,
         session_id,
         payload.question_id,
         payload.option_id,
     )
+    if existing_answer is not None:
+        response.status_code = status.HTTP_200_OK
 
     return AnswerSubmissionResponse(
         session_id=answer.session_id,
         question_id=answer.question_id,
+        option_id=answer.option_id,
         accepted=True,
     )
 

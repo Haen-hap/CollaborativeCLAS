@@ -1,53 +1,48 @@
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
-from app.routers import db_health, assessments, analytics
-import logging
-from app.core.logging_config import setup_logging
-from app.core.exceptions import (
-    AppException,
-    app_exception_handler,
-    database_exception_handler,
-    general_exception_handler,
-    integrity_error_handler,
-    validation_exception_handler
-)
-from fastapi.middleware.cors import CORSMiddleware
+import app.models  # noqa: F401
+from app.routers import analytics, assessments, db_health, sessions
+from app.routers.visits import router as visits_router
 
-from app.schemas import assessment
+app = FastAPI(title="CCLAS API")
 
-setup_logging()
-logger = logging.getLogger(__name__)
 
-app = FastAPI()
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    if any(error.get("type") == "extra_forbidden" for error in exc.errors()):
+        return JSONResponse(status_code=422, content={"detail": "Invalid request data"})
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.frontend_origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"]
+    allow_origins=settings.cors_list,
+    allow_methods=["GET", "POST", "PUT"],
+    allow_headers=["Content-Type", "X-Dashboard-Pin"],
 )
-
-app.add_exception_handler(AppException, app_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(IntegrityError, integrity_error_handler)
-app.add_exception_handler(SQLAlchemyError, database_exception_handler)
-app.add_exception_handler(Exception, general_exception_handler)
-
 app.include_router(db_health.router)
-app.include_router(assessments.router)
 app.include_router(analytics.router)
+app.include_router(assessments.router)
+app.include_router(sessions.router)
+app.include_router(visits_router)
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "CCLAS API", "docs": "/docs"}
 
 
-@app.get("/test-errors")
-def test_errors():
-    result = 10 / 0
-    return result
+# Sirve el frontend (PWA) desde el mismo servidor: http://localhost:8000/app/
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

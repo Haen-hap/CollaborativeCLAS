@@ -1,14 +1,17 @@
-from sqlalchemy import case, distinct, func, select, true
+from sqlalchemy import Numeric, case, cast, distinct, func, select, true
 from sqlalchemy.orm import Session
 
 from app.models.assessment_results import AssessmentResult, LiteracyClassification
 from app.models.assessment_session import AssessmentSession, CompletionStatus
 from app.models.session_answers import SessionAnswer
 from app.schemas.analytics import (
-    AnalyticsSummaryResponse,
     ClassificationDistributionItem,
+    LegacyAnalyticsSummaryResponse,
 )
 
+
+MAX_BY_CHALLENGE = (2, 2, 2, 3)
+MAX_TOTAL_SCORE = sum(MAX_BY_CHALLENGE)
 
 CLASSIFICATION_LABELS = {
     LiteracyClassification.RED: "Red",
@@ -17,8 +20,15 @@ CLASSIFICATION_LABELS = {
 }
 
 
-def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
-    """Return aggregate dashboard metrics for the current assessment."""
+def classify(total: int) -> LiteracyClassification:
+    if total <= 3:
+        return LiteracyClassification.RED
+    if total <= 6:
+        return LiteracyClassification.YELLOW
+    return LiteracyClassification.GREEN
+
+
+def get_analytics_summary(db: Session) -> LegacyAnalyticsSummaryResponse:
     session_stats = select(
         func.count(AssessmentSession.session_id).label("total_assessments"),
         func.count(
@@ -56,7 +66,15 @@ def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
     result_stats = select(
         func.count(AssessmentResult.session_id).label("total_submissions"),
         func.round(
-            func.avg(AssessmentResult.total_literacy_score * 100.0 / 9), 1
+            cast(
+                func.avg(
+                    AssessmentResult.total_literacy_score
+                    * 100.0
+                    / MAX_TOTAL_SCORE
+                ),
+                Numeric,
+            ),
+            1,
         ).label("average_score_percentage"),
     ).cte("result_stats")
 
@@ -84,9 +102,12 @@ def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
             AssessmentResult.literacy_classification,
             classification_count.label("count"),
             func.round(
-                classification_count
-                * 100.0
-                / func.nullif(func.sum(classification_count).over(), 0),
+                cast(
+                    classification_count
+                    * 100.0
+                    / func.nullif(func.sum(classification_count).over(), 0),
+                    Numeric,
+                ),
                 1,
             ).label("percentage"),
             (classification_count == func.max(classification_count).over()).label(
@@ -98,7 +119,6 @@ def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
         row.literacy_classification: row for row in distribution_rows
     }
 
-    result_count = summary.total_submissions
     distribution = []
     most_common_classifications = []
     for classification in LiteracyClassification:
@@ -115,7 +135,7 @@ def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
         if row is not None and row.is_most_common:
             most_common_classifications.append(CLASSIFICATION_LABELS[classification])
 
-    return AnalyticsSummaryResponse(
+    return LegacyAnalyticsSummaryResponse(
         total_assessments=summary.total_assessments,
         completed_assessments=summary.completed_assessments,
         in_progress_assessments=summary.in_progress_assessments,
@@ -123,8 +143,12 @@ def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
         assessments_without_answers=summary.assessments_without_answers,
         sessions_with_answers=summary.sessions_with_answers,
         total_answers=summary.total_answers,
-        total_submissions=result_count,
-        average_score_percentage=summary.average_score_percentage,
+        total_submissions=summary.total_submissions,
+        average_score_percentage=(
+            float(summary.average_score_percentage)
+            if summary.average_score_percentage is not None
+            else None
+        ),
         most_common_classifications=most_common_classifications,
         classification_distribution=distribution,
     )

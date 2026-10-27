@@ -1,15 +1,57 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0f19" />
-    <meta name="description" content="CLAS — Collaborative Literacy Assessment System" />
-    <title>CLAS — Collaborative Literacy Assessment System</title>
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0A192F" />
+    <meta name="description" content="GBM CCLAS · Collaborative Community Literacy Assessment System" />
+    <title>GBM CCLAS · La Ruta de Nina</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>
+    <div id="app">
+      <header>GBM<b>CCLAS</b><i id="asst">Modo asistido</i></header>
+      <div class="gems" id="gems"></div>
+      <div id="scene">
+        <div class="layer" id="far"></div>
+        <div class="layer" id="near"></div>
+        <div id="ground"></div>
+        <div id="bubble"></div>
+        <svg id="hero" viewBox="0 0 80 116"><g class="front" stroke="#0A192F" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M14 30c-10-4-12 8-6 14 4 2 8 0 10-4z" fill="#0072CE"/><path d="M66 30c10-4 12 8 6 14-4 2-8 0-10-4z" fill="#0072CE"/><rect class="leg l1" x="27" y="86" width="11" height="26" rx="5" fill="#0090C8"/><rect class="leg l2" x="42" y="86" width="11" height="26" rx="5" fill="#00A3E0"/><rect class="arm a1" x="9" y="62" width="11" height="26" rx="5.5" fill="#0090C8"/><rect class="arm a2" x="60" y="62" width="11" height="26" rx="5.5" fill="#00A3E0"/><rect x="22" y="58" width="36" height="32" rx="14" fill="#00B7F2"/><ellipse cx="40" cy="34" rx="29" ry="25" fill="#00C2FF"/><path d="M11 32C12 12 28 8 40 8s28 4 29 24c-8-8-18-12-29-10-11-2-21 2-29 10z" fill="#0072CE"/><path d="M40 9c-3-4-1-8 3-8" fill="none"/><circle cx="28" cy="37" r="12" fill="#fff"/><circle cx="52" cy="37" r="12" fill="#fff"/><circle cx="29" cy="38" r="4" fill="#0A192F" stroke="none"/><circle cx="51" cy="38" r="4" fill="#0A192F" stroke="none"/><circle cx="30.5" cy="36.5" r="1.3" fill="#fff" stroke="none"/><circle cx="52.5" cy="36.5" r="1.3" fill="#fff" stroke="none"/><ellipse cx="40" cy="55" rx="3" ry="2.2" fill="#0A192F"/></g><g class="side" stroke="#0A192F" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M22 30C6 20 2 38 10 46c6 0 10-6 12-10z" fill="#0072CE"/><rect class="leg l1" x="32" y="86" width="11" height="26" rx="5" fill="#0090C8"/><rect class="leg l2" x="38" y="86" width="11" height="26" rx="5" fill="#00A3E0"/><rect x="27" y="58" width="26" height="32" rx="12" fill="#00B7F2"/><rect class="arm a2" x="34" y="62" width="11" height="26" rx="5.5" fill="#00A3E0"/><ellipse cx="40" cy="34" rx="26" ry="25" fill="#00C2FF"/><path d="M14 32C14 12 28 8 40 8s24 6 24 20c-6-6-14-8-22-7-10 0-20 4-28 11z" fill="#0072CE"/><path d="M40 9c-3-4-1-8 3-8" fill="none"/><circle cx="33" cy="42" r="4" fill="#00A3E0"/><circle cx="54" cy="37" r="12" fill="#fff"/><circle cx="58" cy="38" r="4" fill="#0A192F" stroke="none"/><circle cx="59.5" cy="36.5" r="1.3" fill="#fff" stroke="none"/><path d="M58 54h4" fill="none"/></g></svg>
+      </div>
+      <div id="panel"></div>
+      <div id="modal"><div><span>¿Sigues ahí, amigo?</span><button class="btn" onclick="poke()">Sí, sigo aquí</button></div></div>
+    </div>
+    <script>
+      (function () {
+        var path = window.location.pathname || "/";
+        var isReactRoute =
+          path.startsWith("/datos") ||
+          path.startsWith("/admin") ||
+          path.startsWith("/qr");
+        if (isReactRoute) {
+          var ninaApp = document.getElementById("app");
+          if (ninaApp) ninaApp.remove();
+          document.body.style.overflow = "auto";
+          document.body.style.display = "block";
+        } else {
+          var reactRoot = document.getElementById("root");
+          if (reactRoot) reactRoot.remove();
+          var link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "/css/styles.css";
+          document.head.appendChild(link);
+          ["/js/config.js", "/js/icons.js", "/js/audio.js", "/js/data.js", "/js/api.js", "/js/game.js"].forEach(function (src) {
+            var s = document.createElement("script");
+            s.src = src;
+            s.async = false;
+            document.body.appendChild(s);
+          });
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

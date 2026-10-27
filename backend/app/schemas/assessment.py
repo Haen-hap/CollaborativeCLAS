@@ -54,6 +54,7 @@ class AnswerSubmission(BaseModel):
 class AnswerSubmissionResponse(BaseModel):
     session_id: int
     question_id: int
+    option_id: int
     accepted: bool
 
 

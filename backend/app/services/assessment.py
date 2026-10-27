@@ -122,6 +122,11 @@ def submit_answer(
     session_question = db.get(SessionQuestion, (session_id, question_id))
 
     if session_question is None:
+        if db.get(Question, question_id) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Question is not part of this assessment session",
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Question is not part of this assessment session",
@@ -131,7 +136,7 @@ def submit_answer(
 
     if option is None or option.question_id != question_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Selected option does not belong to this question",
         )
 

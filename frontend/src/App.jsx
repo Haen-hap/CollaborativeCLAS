@@ -16,9 +16,11 @@ import Assessment from "./components/Assessment";
 import ResultScreen from "./components/ResultScreen";
 import QrEntryPage from "./components/QrEntryPage";
 import AdminPanel from "./components/AdminPanel";
+import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import "./App.css";
 
 function App() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
   const [hasConsent, setHasConsent] = useState(false);
   const [demographics, setDemographics] = useState(null);
   const [backendSession, setBackendSession] = useState(null);
@@ -37,14 +39,15 @@ function App() {
     }
   }, [session, persistenceAvailable]);
 
-  if (window.location.pathname === "/qr") {
+  if (pathname.startsWith("/datos")) {
+    return <AnalyticsDashboard />;
+  }
+
+  if (pathname === "/qr" || pathname === "/qr/") {
     return <QrEntryPage />;
   }
 
-  if (
-    window.location.pathname === "/admin" ||
-    window.location.pathname === "/admin/"
-  ) {
+  if (pathname === "/admin" || pathname === "/admin/") {
     return <AdminPanel />;
   }
 

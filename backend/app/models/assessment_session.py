@@ -9,10 +9,9 @@ from sqlalchemy import (
     Integer,
     String,
 )
-from sqlalchemy.orm import Relationship, validates, relationships
+from sqlalchemy.orm import relationship, validates
 
 from app.core.database import Base
-from app.models import session_questions
 
 
 class AgeRange(str, enum.Enum):
@@ -103,11 +102,11 @@ class AssessmentSession(Base):
     )
     duration_seconds = Column(Integer, nullable=False)
 
-    access_point = Relationship("AccessPoint", back_populates="sessions", uselist=False)
-    zone = Relationship("Zone", back_populates="sessions", uselist=False)
-    result = Relationship("AssessmentResult", back_populates="result", uselist=False)
-    reward = Relationship("Reward", back_populates="session", uselist=False)
-    session_questions = Relationship("SessionQuestion", back_populates="session")
+    access_point = relationship("AccessPoint", back_populates="sessions", uselist=False)
+    zone = relationship("Zone", back_populates="sessions", uselist=False)
+    result = relationship("AssessmentResult", back_populates="session", uselist=False)
+    reward = relationship("Reward", back_populates="session", uselist=False)
+    session_questions = relationship("SessionQuestion", back_populates="session")
 
     @staticmethod
     def _coerce_enum(value, enum_type, field_name):

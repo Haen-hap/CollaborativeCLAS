@@ -3,7 +3,6 @@ from app.core.database import check_database_connection
 
 router = APIRouter()
 
-
 @router.get("/health/")
 async def health_check():
     return {"status": "healthy"}
@@ -11,6 +10,6 @@ async def health_check():
 
 @router.get("/database-status")
 async def database_status():
-    return {
+    return{
         "Connection:": check_database_connection()
     }

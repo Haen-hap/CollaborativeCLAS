@@ -1,35 +1,26 @@
-from sqlalchemy import CheckConstraint, Column, String
-from sqlalchemy.orm import Relationship, validates
-
+from sqlalchemy import Column, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
 class Zone(Base):
+    """Catálogo oficial de zonas (Z001–Z036). Las sesiones guardan el código, nunca texto libre."""
     __tablename__ = "zones"
-    __table_args__ = (
-        CheckConstraint(
-            "(code = 'DECLINED' OR "
-            "(code LIKE 'Z___' AND "
-            "substr(code, 2, 3) BETWEEN '001' AND '036'))",
-            name="ck_zones_code",
-        ),
-        CheckConstraint("trim(name) != ''", name="ck_zones_name"),
-    )
+    code = Column(String(4), primary_key=True)
+    name = Column(String(80), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
-    code = Column(String, primary_key=True, nullable=False)
-    name = Column(String, nullable=False)
-    sessions = Relationship("AssessmentSession", back_populates="zone")
+    kiosks = relationship("Kiosk", back_populates="zone")
+    sessions = relationship("AssessmentSession", back_populates="zone")
 
-    @validates("code")
-    def validate_code(self, key, value):
-        valid_codes = {f"Z{number:03d}" for number in range(1, 37)}
-        valid_codes.add("DECLINED")
-        if value not in valid_codes:
-            raise ValueError(f"Invalid zone code: {value}")
-        return value
 
-    @validates("name")
-    def validate_name(self, key, value):
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Zone name cannot be empty")
-        return value
+class Kiosk(Base):
+    __tablename__ = "kiosks"
+    code = Column(String(20), primary_key=True)
+    name = Column(String(80), nullable=False)
+    zone_code = Column(String(4), ForeignKey("zones.code", name="fk_kiosks_zone_code_zones"), nullable=True)
+
+    zone = relationship("Zone", back_populates="kiosks")
+    sessions = relationship("GameSession", back_populates="kiosk")
+    visits = relationship("Visit", back_populates="kiosk")
