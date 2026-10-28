@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
 import app.models  # noqa: F401
-from app.routers import analytics, assessments, db_health, sessions
+from app.routers import analytics, db_health, sessions
 from app.routers.visits import router as visits_router
 
 app = FastAPI(title="CCLAS API")
@@ -32,7 +32,7 @@ app.add_middleware(
 )
 app.include_router(db_health.router)
 app.include_router(analytics.router)
-app.include_router(assessments.router)
+# app.include_router(assessments.router)  # Desactivado: flujo legado reemplazado por /api/sessions
 app.include_router(sessions.router)
 app.include_router(visits_router)
 

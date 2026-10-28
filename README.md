@@ -5,8 +5,7 @@ Proyecto completo: **frontend** (juego PWA con Nina) + **backend** (FastAPI + Po
 ```
 CCLAS-Nina/
 ├── backend/      API FastAPI, modelos, migraciones (alembic), tests, seed
-├── frontend/     PWA estática (HTML + CSS + JS, sin compilar)
-└── Community_Literacy_Dummy_Database_v2.xlsx   (para el seed)
+└── frontend/     PWA estática (HTML + CSS + JS, sin compilar)
 ```
 
 ## Arrancar todo (un solo servidor)
@@ -17,7 +16,7 @@ python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\
 pip install -r requirements.txt
 cp .env.example .env                                   # edita DATABASE_URL
 alembic upgrade head
-python -m scripts.seed --excel ../Community_Literacy_Dummy_Database_v2.xlsx   # opcional
+python -m scripts.seed                                 # carga zonas y kioscos
 uvicorn app.main:app --reload
 ```
 - Juego: http://localhost:8000/app/  (prueba en modo móvil 360×640)

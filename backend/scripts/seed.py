@@ -1,49 +1,74 @@
-"""Carga zonas y kioscos; opcionalmente importa las sesiones simuladas del cliente.
+"""Carga el catálogo inicial de zonas y kioscos usando SQLAlchemy puro.
 
 Uso (desde backend/, con la BD migrada):
     python -m scripts.seed
-    python -m scripts.seed --excel ../Community_Literacy_Dummy_Database_v2.xlsx
 """
-import argparse
-
 from app.core.database import SessionLocal
-from app.core.zones_data import KIOSKS, ZONES
-from app.models.game_session import GameSession
 from app.models.zone import Kiosk, Zone
-from app.schemas.session import SessionIn
-from app.services.scoring import classify
+
+ZONES: list[dict[str, str]] = [
+    {"code": "Z001", "name": "Curundú"},
+    {"code": "Z002", "name": "Bethania"},
+    {"code": "Z003", "name": "Ancón"},
+    {"code": "Z004", "name": "Bella Vista"},
+    {"code": "Z005", "name": "Calidonia"},
+    {"code": "Z006", "name": "El Chorrillo"},
+    {"code": "Z007", "name": "Santa Ana"},
+    {"code": "Z008", "name": "San Felipe"},
+    {"code": "Z009", "name": "Pueblo Nuevo"},
+    {"code": "Z010", "name": "San Francisco"},
+    {"code": "Z011", "name": "Parque Lefevre"},
+    {"code": "Z012", "name": "Río Abajo"},
+    {"code": "Z013", "name": "Juan Díaz"},
+    {"code": "Z014", "name": "Tocumen"},
+    {"code": "Z015", "name": "Las Mañanitas"},
+    {"code": "Z016", "name": "Pedregal"},
+    {"code": "Z017", "name": "24 de Diciembre"},
+    {"code": "Z018", "name": "Ernesto Córdoba Campos"},
+    {"code": "Z019", "name": "Las Cumbres"},
+    {"code": "Z020", "name": "Chilibre"},
+    {"code": "Z021", "name": "Alcalde Díaz"},
+    {"code": "Z022", "name": "Pacora"},
+    {"code": "Z023", "name": "San Martín"},
+    {"code": "Z024", "name": "Don Bosco"},
+    {"code": "Z025", "name": "Belisario Frías"},
+    {"code": "Z026", "name": "Belisario Porras"},
+    {"code": "Z027", "name": "José Domingo Espinar"},
+    {"code": "Z028", "name": "Mateo Iturralde"},
+    {"code": "Z029", "name": "Omar Torrijos"},
+    {"code": "Z030", "name": "Rufina Alfaro"},
+    {"code": "Z031", "name": "Victoriano Lorenzo"},
+    {"code": "Z032", "name": "Amelia Denis de Icaza"},
+    {"code": "Z033", "name": "Arnulfo Arias"},
+    {"code": "Z034", "name": "Samaria"},
+    {"code": "Z035", "name": "Zona 035"},
+    {"code": "Z036", "name": "Zona 036"},
+]
+
+KIOSKS: list[dict[str, str | None]] = [
+    {"code": "PTYK001", "name": "Smart Kiosk Curundú", "zone_code": "Z001"},
+    {"code": "PTYK002", "name": "Smart Kiosk Bethania", "zone_code": "Z002"},
+    {"code": "PTYK003", "name": "Smart Kiosk Ancón", "zone_code": "Z003"},
+    {"code": "DIRECT_WEB", "name": "Direct PWA Web Access", "zone_code": None},
+]
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--excel", help="Ruta al Excel del cliente (hoja Raw_Sessions_Data)")
-    args = ap.parse_args()
     db = SessionLocal()
     try:
-        for code, name in ZONES:
-            db.merge(Zone(code=code, name=name))
-        for code, name, zone in KIOSKS:
-            db.merge(Kiosk(code=code, name=name, zone_code=zone))
+        for zone in ZONES:
+            db.merge(Zone(**zone))
+        for kiosk in KIOSKS:
+            db.merge(Kiosk(**kiosk))
         db.commit()
         print(f"Zonas: {len(ZONES)} · Kioscos: {len(KIOSKS)}")
-
-        if args.excel:
-            from scripts.excel_rows import read_excel
-            n = mismatches = 0
-            for raw in read_excel(args.excel):
-                s = SessionIn.model_validate(raw)
-                total = (s.c1_visual_signs_score + s.c2_sentence_comprehension_score
-                         + s.c3_mobile_icons_score + s.c4_cybersecurity_score)
-                if classify(total) != raw["internal_zone_classification"]:
-                    mismatches += 1
-                db.merge(GameSession(**s.model_dump(), total_literacy_score=total,
-                                     internal_zone_classification=classify(total)))
-                n += 1
-            db.commit()
-            print(f"Sesiones importadas: {n} · clasificaciones distintas a las del Excel: {mismatches}")
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     main()
+
