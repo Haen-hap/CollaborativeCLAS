@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
+import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import { getAdminDashboardStats } from "../api/api";
 
 const adminPages = {
   dashboard: {
-    label: "Dashboard",
-    title: "Dashboard",
-    description: "An overview of assessment activity and results.",
+    label: "Datos Generales",
+    title: "Datos Generales · Dashboard",
+    description: "Resumen general de actividad y resultados de evaluación.",
     placeholder:
       "Dashboard cards and the Red/Yellow/Green chart will appear here.",
+  },
+  intelligence: {
+    label: "Inteligencia IA",
+    title: "AI Intelligence & Machine Learning",
+    description:
+      "Ranking de vulnerabilidad crítica por zona, dispersión C4 por kiosco y alertas automatizadas Pre-ML.",
+    placeholder: "",
   },
   results: {
     label: "Results",
@@ -68,7 +76,7 @@ export default function AdminPanel() {
           <p className="admin-eyebrow">Administration</p>
           <h1 className="admin-brand-title">Admin Panel</h1>
           <p className="admin-brand-description">
-            Manage assessments from one place.
+            Manage assessments and AI analytics from one place.
           </p>
         </div>
 
@@ -103,7 +111,11 @@ export default function AdminPanel() {
           </div>
 
           <span className="admin-preview-badge">
-            {activePage === "dashboard" && dashboardStats ? "Live data" : "Admin workspace"}
+            {activePage === "intelligence"
+              ? "Pre-ML Engine"
+              : activePage === "dashboard" && dashboardStats
+                ? "Live data"
+                : "Admin workspace"}
           </span>
         </header>
 
@@ -121,6 +133,8 @@ export default function AdminPanel() {
               error={dashboardError}
               onRefresh={() => loadDashboardStats()}
             />
+          ) : activePage === "intelligence" ? (
+            <IntelligenceDashboard />
           ) : (
             <>
               <p>{currentPage.placeholder}</p>

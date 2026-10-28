@@ -80,6 +80,20 @@ export async function getAnalyticsSummary() {
   return handleResponse(response, "Failed to load analytics summary");
 }
 
+export async function getVulnerabilityRanking({ signal } = {}) {
+  const response = await fetch(`${API_URL}/api/analytics/vulnerability-ranking`, {
+    signal,
+  });
+  return handleResponse(response, "Failed to load zone vulnerability ranking");
+}
+
+export async function getKioskC4Dispersal({ signal } = {}) {
+  const response = await fetch(`${API_URL}/api/analytics/kiosk-c4-dispersal`, {
+    signal,
+  });
+  return handleResponse(response, "Failed to load kiosk C4 dispersal metrics");
+}
+
 export async function getAdminDashboardStats({ signal } = {}) {
   const response = await fetch(`${API_URL}/admin/dashboard/stats`, { signal });
   return handleResponse(response, "Failed to load dashboard statistics");

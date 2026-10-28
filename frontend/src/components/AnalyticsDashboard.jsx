@@ -7,6 +7,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { getAnalyticsSummary } from "../api/api";
+import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import "./AnalyticsDashboard.css";
 
 const ANALYTICS_PIN = import.meta.env.VITE_ANALYTICS_PIN || "2026";
@@ -208,6 +209,7 @@ function csvEscape(value) {
 
 export default function AnalyticsDashboard() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [summary, setSummary] = useState(emptySummary);
@@ -401,7 +403,28 @@ export default function AnalyticsDashboard() {
         </div>
       </header>
 
-      <section className="analytics-toolbar">
+      <nav className="analytics-view-tabs" aria-label="Vistas del centro de analítica">
+        <button
+          type="button"
+          className={`analytics-tab-btn ${activeTab === "general" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("general")}
+        >
+          📊 Datos Generales
+        </button>
+        <button
+          type="button"
+          className={`analytics-tab-btn ${activeTab === "ai" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("ai")}
+        >
+          🧠 Inteligencia IA
+        </button>
+      </nav>
+
+      {activeTab === "ai" ? (
+        <IntelligenceDashboard forceSimulation={source === SIMULATED_SOURCE} />
+      ) : (
+        <>
+          <section className="analytics-toolbar">
         <div>
           {loading && <span>Sincronizando datos…</span>}
           {apiError && <span className="analytics-toolbar-warning">API no disponible: usando simulación segura.</span>}
@@ -529,6 +552,8 @@ export default function AnalyticsDashboard() {
           </div>
         </article>
       </section>
+        </>
+      )}
     </main>
   );
 }

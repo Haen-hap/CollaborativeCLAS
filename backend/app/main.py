@@ -32,6 +32,7 @@ app.add_middleware(
 )
 app.include_router(db_health.router)
 app.include_router(analytics.router)
+app.include_router(analytics.router, prefix="/api")
 # app.include_router(assessments.router)  # Desactivado: flujo legado reemplazado por /api/sessions
 app.include_router(sessions.router)
 app.include_router(visits_router)
