@@ -302,3 +302,188 @@ def test_unknown_analytics_endpoint_returns_not_found(empty_analytics_api):
     response = empty_analytics_api.get("/analytics/not-a-metric")
 
     assert response.status_code == 404
+
+
+def test_zone_vulnerability_ranking_orders_by_red_percentage_with_window_rank(
+    db_session, test_client
+):
+    z1 = Zone(code="Z001", name="Curundú")
+    z2 = Zone(code="Z002", name="Bethania")
+    kiosk = Kiosk(code="PTYK001", name="Smart Kiosk Curundú", zone_code="Z001")
+    db_session.add_all([z1, z2, kiosk])
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            # Z001: 2 RED de 2 sesiones (100% crítico -> rank 1)
+            GameSession(
+                session_id="SES-RANK-1",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=0,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=0,
+                total_literacy_score=2,
+                internal_zone_classification="RED",
+                completion_status="COMPLETED",
+                duration_seconds=60,
+            ),
+            GameSession(
+                session_id="SES-RANK-2",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=0,
+                total_literacy_score=3,
+                internal_zone_classification="RED",
+                completion_status="COMPLETED",
+                duration_seconds=70,
+            ),
+            # Z002: 1 RED y 1 GREEN (50% crítico -> rank 2)
+            GameSession(
+                session_id="SES-RANK-3",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z002",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=0,
+                c3_mobile_icons_score=0,
+                c4_cybersecurity_score=1,
+                total_literacy_score=2,
+                internal_zone_classification="RED",
+                completion_status="COMPLETED",
+                duration_seconds=65,
+            ),
+            GameSession(
+                session_id="SES-RANK-4",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z002",
+                c1_visual_signs_score=2,
+                c2_sentence_comprehension_score=2,
+                c3_mobile_icons_score=2,
+                c4_cybersecurity_score=2,
+                total_literacy_score=8,
+                internal_zone_classification="GREEN",
+                completion_status="COMPLETED",
+                duration_seconds=80,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = test_client.get("/analytics/vulnerability-ranking")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["global_avg_critical_index"] == 75.0
+    assert len(data["zones"]) == 2
+    assert data["zones"][0]["zone_code"] == "Z001"
+    assert data["zones"][0]["critical_literacy_index"] == 100.0
+    assert data["zones"][0]["vulnerability_rank"] == 1
+    assert data["zones"][1]["zone_code"] == "Z002"
+    assert data["zones"][1]["critical_literacy_index"] == 50.0
+    assert data["zones"][1]["vulnerability_rank"] == 2
+
+
+def test_kiosk_c4_dispersal_identifies_high_variance_outliers(
+    db_session, test_client
+):
+    z1 = Zone(code="Z001", name="Curundú")
+    k1 = Kiosk(code="PTYK001", name="Smart Kiosk Curundú", zone_code="Z001")
+    k2 = Kiosk(code="PTYK002", name="Smart Kiosk Bethania", zone_code="Z001")
+    db_session.add_all([z1, k1, k2])
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            # PTYK001: puntajes C4 polarizados (0 y 3) -> alta desviación estándar (1.5 -> outlier)
+            GameSession(
+                session_id="SES-DISP-1",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=0,
+                total_literacy_score=3,
+                internal_zone_classification="RED",
+                completion_status="COMPLETED",
+                duration_seconds=50,
+            ),
+            GameSession(
+                session_id="SES-DISP-2",
+                kiosk_id="PTYK001",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=2,
+                c2_sentence_comprehension_score=2,
+                c3_mobile_icons_score=2,
+                c4_cybersecurity_score=3,
+                total_literacy_score=9,
+                internal_zone_classification="GREEN",
+                completion_status="COMPLETED",
+                duration_seconds=110,
+            ),
+            # PTYK002: puntajes C4 uniformes (2 y 2) -> desviación estándar 0.0
+            GameSession(
+                session_id="SES-DISP-3",
+                kiosk_id="PTYK002",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=2,
+                total_literacy_score=5,
+                internal_zone_classification="YELLOW",
+                completion_status="COMPLETED",
+                duration_seconds=75,
+            ),
+            GameSession(
+                session_id="SES-DISP-4",
+                kiosk_id="PTYK002",
+                origin="KIOSK",
+                assisted_mode=False,
+                zone_code="Z001",
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=1,
+                c4_cybersecurity_score=2,
+                total_literacy_score=5,
+                internal_zone_classification="YELLOW",
+                completion_status="COMPLETED",
+                duration_seconds=75,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = test_client.get("/analytics/kiosk-c4-dispersal")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["kiosks"]) == 2
+
+    first = data["kiosks"][0]
+    assert first["kiosk_id"] == "PTYK001"
+    assert first["stddev_c4_score"] == 1.5
+    assert first["dispersal_rank"] == 1
+    assert first["is_outlier"] is True
+
+    second = data["kiosks"][1]
+    assert second["kiosk_id"] == "PTYK002"
+    assert second["stddev_c4_score"] == 0.0
+    assert second["dispersal_rank"] == 2
+    assert second["is_outlier"] is False

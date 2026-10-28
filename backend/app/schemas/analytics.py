@@ -64,3 +64,53 @@ class LegacyAnalyticsSummaryResponse(BaseModel):
     )
     most_common_classifications: list[str]
     classification_distribution: list[ClassificationDistributionItem]
+
+
+class ZoneVulnerabilityItem(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    zone_code: str
+    zone_name: str
+    total_sessions: int = Field(ge=0)
+    red_sessions: int = Field(ge=0)
+    yellow_sessions: int = Field(ge=0)
+    green_sessions: int = Field(ge=0)
+    avg_total_score: float = Field(ge=0, le=9)
+    critical_literacy_index: float = Field(ge=0, le=100)
+    vulnerability_rank: int = Field(ge=1)
+    dense_vulnerability_rank: int = Field(ge=1)
+
+
+class ZoneVulnerabilityRankingResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    global_avg_critical_index: float = Field(ge=0, le=100)
+    zones: list[ZoneVulnerabilityItem]
+
+
+class KioskC4DispersalItem(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    kiosk_id: str
+    kiosk_name: str
+    zone_code: str | None = None
+    total_sessions: int = Field(ge=0)
+    avg_c4_score: float = Field(ge=0, le=3)
+    stddev_c4_score: float = Field(ge=0, le=3)
+    min_c4_score: int = Field(ge=0, le=3)
+    max_c4_score: int = Field(ge=0, le=3)
+    p25_c4_score: float = Field(ge=0, le=3)
+    p50_c4_score: float = Field(ge=0, le=3)
+    p75_c4_score: float = Field(ge=0, le=3)
+    iqr_c4_score: float = Field(ge=0, le=3)
+    avg_duration_seconds: float = Field(ge=0)
+    stddev_duration_seconds: float = Field(ge=0)
+    dispersal_rank: int = Field(ge=1)
+    is_outlier: bool
+
+
+class KioskC4DispersalResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    global_avg_c4_score: float = Field(ge=0, le=3)
+    kiosks: list[KioskC4DispersalItem]
