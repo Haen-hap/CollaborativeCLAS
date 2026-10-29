@@ -1,239 +1,239 @@
-# Diccionario de Datos — CCLAS (Collaborative Community Literacy Assessment System)
+# Data Dictionary — CCLAS (Collaborative Community Literacy Assessment System)
 
-Este documento describe de forma integral el esquema de base de datos relacional (PostgreSQL / SQLAlchemy ORM) del sistema **CCLAS**, incluyendo tablas de catálogo, flujo de evaluación estructurado, flujo gamificado (*La Ruta de Nina*), métricas anónimas de visitas, llaves primarias y foráneas, y restricciones de integridad (`CHECK` y `UNIQUE`).
+This document provides a comprehensive description of the relational database schema (PostgreSQL / SQLAlchemy ORM) of the **CCLAS** system, including catalog tables, the structured assessment workflow, the gamified workflow (*La Ruta de Nina*), anonymous visit metrics, primary and foreign keys, and integrity constraints (`CHECK` and `UNIQUE`).
 
-> **Privacidad por Diseño (Ley 81 de Panamá):** Ninguna tabla almacena Información de Identificación Personal (PII) como nombres, cédulas, correos electrónicos, teléfonos, direcciones IP o huellas de dispositivos. Todos los datos demográficos y geográficos se registran exclusivamente mediante códigos canónicos cerrados.
-
----
-
-## 1. Catálogos Geográficos y Puntos de Acceso
-
-### 1.1 Tabla: `zones`
-Catálogo oficial de zonas comunitarias (`Z001`–`Z036`) y código especial `DECLINED` cuando el participante opta por no compartir su ubicación.
-
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
-| :--- | :--- | :--- | :--- | :--- |
-| `code` | `VARCHAR(4)` / `VARCHAR` | `NOT NULL` | **PK** | Código canónico de la zona (`Z001` a `Z036`, o `DECLINED`). |
-| `name` | `VARCHAR(80)` | `NOT NULL` | — | Nombre oficial del corregimiento o zona comunitaria. |
-| `latitude` | `DOUBLE PRECISION` | `NULL` | — | Latitud geográfica referencial del centroide de la zona. |
-| `longitude` | `DOUBLE PRECISION` | `NULL` | — | Longitud geográfica referencial del centroide de la zona. |
+> **Privacy by Design (Panama's Law 81):** No table stores Personally Identifiable Information (PII), such as names, national ID numbers, email addresses, phone numbers, IP addresses, or device fingerprints. All demographic and geographic data are recorded exclusively using closed canonical codes.
 
 ---
 
-### 1.2 Tabla: `access_points`
-Puntos de acceso autorizados desde los cuales se inician las sesiones de evaluación.
+## 1. Geographic Catalogs and Access Points
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+### 1.1 Table: `zones`
+Official catalog of community zones (`Z001`–`Z036`) and the special code `DECLINED`, used when a participant chooses not to share their location.
+
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `code` | `VARCHAR` | `NOT NULL` | **PK** | Código del punto de acceso: `'PTYK001'`, `'PTYK002'`, `'PTYK003'` o `'DIRECT_WEB'`. |
-| `name` | `VARCHAR` | `NOT NULL` | — | Nombre descriptivo del punto de acceso (`trim(name) != ''`). |
-| `type` | `ENUM(AccessPointType)` | `NOT NULL` | — | Tipo de canal: `'KIOSK'` o `'WEB'`. |
+| `code` | `VARCHAR(4)` / `VARCHAR` | `NOT NULL` | **PK** | Canonical zone code (`Z001` to `Z036`, or `DECLINED`). |
+| `name` | `VARCHAR(80)` | `NOT NULL` | — | Official name of the corregimiento or community zone. |
+| `latitude` | `DOUBLE PRECISION` | `NULL` | — | Reference geographic latitude of the zone's centroid. |
+| `longitude` | `DOUBLE PRECISION` | `NULL` | — | Reference geographic longitude of the zone's centroid. |
 
-**Restricciones `CHECK`:**
+---
+
+### 1.2 Table: `access_points`
+Authorized access points from which assessment sessions are initiated.
+
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
+| :--- | :--- | :--- | :--- | :--- |
+| `code` | `VARCHAR` | `NOT NULL` | **PK** | Access point code: `'PTYK001'`, `'PTYK002'`, `'PTYK003'`, or `'DIRECT_WEB'`. |
+| `name` | `VARCHAR` | `NOT NULL` | — | Descriptive name of the access point (`trim(name) != ''`). |
+| `type` | `ENUM(AccessPointType)` | `NOT NULL` | — | Channel type: `'KIOSK'` or `'WEB'`. |
+
+**`CHECK` constraints:**
 - `ck_access_points_code`: `code IN ('PTYK001', 'PTYK002', 'PTYK003', 'DIRECT_WEB')`
 - `ck_access_points_name`: `trim(name) != ''`
 - `ck_access_points_code_type`: `(code = 'DIRECT_WEB' AND type = 'WEB') OR (code IN ('PTYK001', 'PTYK002', 'PTYK003') AND type = 'KIOSK')`
 
 ---
 
-### 1.3 Tabla: `kiosks`
-Catálogo de kioscos físicos (*Smart Oasis Kiosks*) y canal web para el flujo gamificado y conteo de visitas.
+### 1.3 Table: `kiosks`
+Catalog of physical kiosks (*Smart Oasis Kiosks*) and the web channel for the gamified workflow and visit counting.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `code` | `VARCHAR(20)` | `NOT NULL` | **PK** | Identificador del kiosco (ej. `PTYK001`, `PTYK002`, `PTYK003`, `DIRECT_WEB`). |
-| `name` | `VARCHAR(80)` | `NOT NULL` | — | Nombre de ubicación del kiosco. |
-| `zone_code` | `VARCHAR(4)` | `NULL` | **FK** → `zones.code`, **IDX** | Zona donde se ubica el kiosco (`fk_kiosks_zone_code_zones`). |
+| `code` | `VARCHAR(20)` | `NOT NULL` | **PK** | Kiosk identifier (e.g., `PTYK001`, `PTYK002`, `PTYK003`, `DIRECT_WEB`). |
+| `name` | `VARCHAR(80)` | `NOT NULL` | — | Kiosk location name. |
+| `zone_code` | `VARCHAR(4)` | `NULL` | **FK** → `zones.code`, **IDX** | Zone where the kiosk is located (`fk_kiosks_zone_code_zones`). |
 
 ---
 
-## 2. Flujo de Evaluación Estructurada y Banco de Preguntas
+## 2. Structured Assessment Workflow and Question Bank
 
-### 2.1 Tabla: `assessment_sessions`
-Registra cada sesión de evaluación iniciada por un participante junto con su perfil demográfico anónimo.
+### 2.1 Table: `assessment_sessions`
+Records each assessment session initiated by a participant, along with their anonymous demographic profile.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `session_id` | `INTEGER` | `NOT NULL` | **PK** | Identificador único autoincremental de la sesión. |
-| `access_point_code` | `VARCHAR` | `NOT NULL` | **FK** → `access_points.code` | Punto de acceso desde donde se inició la sesión. |
-| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indica si contó con apoyo de un facilitador (`true`/`false`). |
-| `age_range` | `ENUM(AgeRange)` | `NOT NULL` | — | Rango de edad: `'18_24'`, `'25_34'`, `'35_49'`, `'50_59'`, `'60_PLUS'`. |
-| `work_status` | `ENUM(WorkStatus)` | `NOT NULL` | — | Situación laboral: `'FORMAL'`, `'INFORMAL'`, `'HOME'`, `'STUDENT'`, `'UNEMPLOYED'`. |
-| `schooling_level` | `ENUM(SchoolingLevel)` | `NOT NULL` | — | Nivel educativo: `'PRIMARY_INCOMPLETE'`, `'PRIMARY_COMPLETE'`, `'SECONDARY_INCOMPLETE'`, `'SECONDARY_COMPLETE'`, `'TERTIARY'`. |
-| `zone_code` | `VARCHAR` | `NOT NULL` | **FK** → `zones.code` | Código de zona (`Z001`–`Z036` o `'DECLINED'`). |
-| `location_declined` | `BOOLEAN` | `NOT NULL` | — | `true` si y solo si `zone_code = 'DECLINED'`. |
-| `completion_status` | `ENUM(CompletionStatus)` | `NOT NULL` | — | Estado de la sesión: `'IN_PROGRESS'`, `'COMPLETED'`, `'ABANDONED'`. |
-| `duration_seconds` | `INTEGER` | `NOT NULL` | — | Duración total en segundos (`>= 0`). |
+| `session_id` | `INTEGER` | `NOT NULL` | **PK** | Unique auto-incrementing session identifier. |
+| `access_point_code` | `VARCHAR` | `NOT NULL` | **FK** → `access_points.code` | Access point from which the session was initiated. |
+| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indicates whether assistance from a facilitator was provided (`true`/`false`). |
+| `age_range` | `ENUM(AgeRange)` | `NOT NULL` | — | Age range: `'18_24'`, `'25_34'`, `'35_49'`, `'50_59'`, `'60_PLUS'`. |
+| `work_status` | `ENUM(WorkStatus)` | `NOT NULL` | — | Employment status: `'FORMAL'`, `'INFORMAL'`, `'HOME'`, `'STUDENT'`, `'UNEMPLOYED'`. |
+| `schooling_level` | `ENUM(SchoolingLevel)` | `NOT NULL` | — | Education level: `'PRIMARY_INCOMPLETE'`, `'PRIMARY_COMPLETE'`, `'SECONDARY_INCOMPLETE'`, `'SECONDARY_COMPLETE'`, `'TERTIARY'`. |
+| `zone_code` | `VARCHAR` | `NOT NULL` | **FK** → `zones.code` | Zone code (`Z001`–`Z036` or `'DECLINED'`). |
+| `location_declined` | `BOOLEAN` | `NOT NULL` | — | `true` if and only if `zone_code = 'DECLINED'`. |
+| `completion_status` | `ENUM(CompletionStatus)` | `NOT NULL` | — | Session status: `'IN_PROGRESS'`, `'COMPLETED'`, `'ABANDONED'`. |
+| `duration_seconds` | `INTEGER` | `NOT NULL` | — | Total duration in seconds (`>= 0`). |
 
-**Restricciones `CHECK`:**
+**`CHECK` constraints:**
 - `ck_assessment_sessions_duration_seconds`: `duration_seconds >= 0`
 - `ck_assessment_sessions_zone_location_declined`: `(zone_code = 'DECLINED' AND location_declined = true) OR (zone_code != 'DECLINED' AND location_declined = false)`
 
 ---
 
-### 2.2 Tabla: `questions`
-Banco de preguntas categorizadas por competencia de literacidad.
+### 2.2 Table: `questions`
+Question bank categorized by literacy competency.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | `NOT NULL` | **PK**, **IDX** | Identificador único de la pregunta. |
-| `category` | `VARCHAR` | `NOT NULL` | — | Categoría de competencia: `'R1'`, `'R2'`, `'R3'`, `'R4'` (o `'test'`). |
-| `question_text` | `VARCHAR` | `NULL` | — | Enunciado de la pregunta. |
-| `assessment_id` | `INTEGER` | `NULL` | **FK** → `assessments.id` | Referencia opcional a plantilla de evaluación legada. |
-| `question_type` | `VARCHAR` | `NULL` | — | Tipo de pregunta (opcional). |
-| `correct_answer` | `VARCHAR` | `NULL` | — | Valor de referencia de respuesta correcta (opcional). |
-| `points` | `INTEGER` | `NULL` | — | Puntaje asignado a la pregunta. |
+| `id` | `INTEGER` | `NOT NULL` | **PK**, **IDX** | Unique question identifier. |
+| `category` | `VARCHAR` | `NOT NULL` | — | Competency category: `'R1'`, `'R2'`, `'R3'`, `'R4'` (or `'test'`). |
+| `question_text` | `VARCHAR` | `NULL` | — | Question prompt. |
+| `assessment_id` | `INTEGER` | `NULL` | **FK** → `assessments.id` | Optional reference to a legacy assessment template. |
+| `question_type` | `VARCHAR` | `NULL` | — | Question type (optional). |
+| `correct_answer` | `VARCHAR` | `NULL` | — | Reference value for the correct answer (optional). |
+| `points` | `INTEGER` | `NULL` | — | Points assigned to the question. |
 
-**Restricciones `CHECK`:**
+**`CHECK` constraints:**
 - `ck_questions_category`: `category IN ('R1', 'R2', 'R3', 'R4', 'test')`
 
 ---
 
-### 2.3 Tabla: `question_options`
-Opciones de respuesta para cada pregunta del banco.
+### 2.3 Table: `question_options`
+Answer options for each question in the bank.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | `NOT NULL` | **PK** | Identificador único de la opción. |
-| `question_id` | `INTEGER` | `NOT NULL` | **FK** → `questions.id` | Pregunta a la que pertenece la opción. |
-| `option_text` | `TEXT` | `NOT NULL` | — | Texto de la opción (`length(trim(option_text)) > 0`). |
-| `is_correct` | `BOOLEAN` | `NOT NULL` | — | Indica si es la opción correcta (`DEFAULT false`). |
+| `id` | `INTEGER` | `NOT NULL` | **PK** | Unique option identifier. |
+| `question_id` | `INTEGER` | `NOT NULL` | **FK** → `questions.id` | Question to which the option belongs. |
+| `option_text` | `TEXT` | `NOT NULL` | — | Option text (`length(trim(option_text)) > 0`). |
+| `is_correct` | `BOOLEAN` | `NOT NULL` | — | Indicates whether the option is correct (`DEFAULT false`). |
 
-**Restricciones e Índices:**
-- `uq_question_options_question_id_id`: `UNIQUE (question_id, id)` (soporte para FK compuesta desde `session_answers`).
+**Constraints and Indexes:**
+- `uq_question_options_question_id_id`: `UNIQUE (question_id, id)` (supports the composite FK from `session_answers`).
 - `ck_question_options_text_not_empty`: `CHECK (length(trim(option_text)) > 0)`
-- `uq_one_correct_option_per_question`: Índice único parcial (`WHERE is_correct = true`) que garantiza una sola respuesta correcta por pregunta.
+- `uq_one_correct_option_per_question`: Partial unique index (`WHERE is_correct = true`) that guarantees only one correct answer per question.
 
 ---
 
-### 2.4 Tabla: `session_questions`
-Asignación de las 6 preguntas seleccionadas para una sesión de evaluación específica.
+### 2.4 Table: `session_questions`
+Assignment of the 6 selected questions to a specific assessment session.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `session_id` | `INTEGER` | `NOT NULL` | **PK**, **FK** → `assessment_sessions.session_id` | Sesión de evaluación. |
-| `question_id` | `INTEGER` | `NOT NULL` | **PK**, **FK** → `questions.id` | Pregunta asignada a la sesión. |
-| `position` | `INTEGER` | `NOT NULL` | — | Orden de presentación de la pregunta (`1` a `6`). |
+| `session_id` | `INTEGER` | `NOT NULL` | **PK**, **FK** → `assessment_sessions.session_id` | Assessment session. |
+| `question_id` | `INTEGER` | `NOT NULL` | **PK**, **FK** → `questions.id` | Question assigned to the session. |
+| `position` | `INTEGER` | `NOT NULL` | — | Question presentation order (`1` to `6`). |
 
-**Restricciones:**
+**Constraints:**
 - `uq_session_question_position`: `UNIQUE (session_id, position)`
 - `ck_session_question_position`: `CHECK (position BETWEEN 1 AND 6)`
 
 ---
 
-### 2.5 Tabla: `session_answers`
-Respuestas seleccionadas por el participante para cada pregunta asignada a su sesión.
+### 2.5 Table: `session_answers`
+Answers selected by the participant for each question assigned to their session.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `session_id` | `INTEGER` | `NOT NULL` | **PK** | Identificador de la sesión. |
-| `question_id` | `INTEGER` | `NOT NULL` | **PK** | Identificador de la pregunta respondida. |
-| `option_id` | `INTEGER` | `NOT NULL` | — | Opción seleccionada por el participante. |
+| `session_id` | `INTEGER` | `NOT NULL` | **PK** | Session identifier. |
+| `question_id` | `INTEGER` | `NOT NULL` | **PK** | Identifier of the answered question. |
+| `option_id` | `INTEGER` | `NOT NULL` | — | Selected option. |
 
-**Llaves Foráneas Compuestas:**
+**Composite Foreign Keys:**
 - `fk_session_answer_question`: `FOREIGN KEY (session_id, question_id) REFERENCES session_questions (session_id, question_id)`
-- `fk_session_answer_option`: `FOREIGN KEY (question_id, option_id) REFERENCES question_options (question_id, id)` (garantiza a nivel de motor de base de datos que la opción elegida pertenezca a esa pregunta).
+- `fk_session_answer_option`: `FOREIGN KEY (question_id, option_id) REFERENCES question_options (question_id, id)` (ensures at the database engine level that the selected option belongs to that question).
 
 ---
 
-### 2.6 Tabla: `assessment_results`
-Puntajes desglosados por competencia y clasificación semafórica final de la evaluación.
+### 2.6 Table: `assessment_results`
+Scores broken down by competency and the final traffic-light classification of the assessment.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | `NOT NULL` | **PK**, **IDX** | Identificador único del resultado. |
-| `session_id` | `INTEGER` | `NULL` | **FK** → `assessment_sessions.session_id` | Sesión evaluada. |
-| `submission_id` | `INTEGER` | `NULL` | **FK** → `assessment_submissions.id` | Envío legado opcional. |
-| `c1_visual_signs_score` | `SMALLINT` | `NOT NULL` | — | Puntaje en C1: Señales visuales (`0` a `2`, `DEFAULT 0`). |
-| `c2_sentence_comprehension_score` | `SMALLINT` | `NOT NULL` | — | Puntaje en C2: Comprensión de oraciones (`0` a `2`, `DEFAULT 0`). |
-| `c3_mobile_icons_score` | `SMALLINT` | `NOT NULL` | — | Puntaje en C3: Iconos móviles (`0` a `2`, `DEFAULT 0`). |
-| `c4_cybersecurity_score` | `SMALLINT` | `NOT NULL` | — | Puntaje en C4: Ciberseguridad (`0` a `3`, `DEFAULT 0`). |
-| `total_literacy_score` | `SMALLINT` | `NOT NULL` | — | Puntaje total acumulado (`0` a `9`, `DEFAULT 0`). |
-| `literacy_classification` | `ENUM(LiteracyClassification)` | `NOT NULL` | — | Clasificación semafórica: `'RED'` (`0–3`), `'YELLOW'` (`4–6`), `'GREEN'` (`7–9`). |
-| `literacy_score` | `INTEGER` | `NULL` | — | Campo de compatibilidad legada. |
-| `total_score` | `INTEGER` | `NULL` | — | Campo de compatibilidad legada. |
-| `digital_score` | `INTEGER` | `NULL` | — | Campo de compatibilidad legada. |
-| `priority_level` | `INTEGER` | `NULL` | — | Nivel de prioridad de intervención (compatibilidad legada). |
+| `id` | `INTEGER` | `NOT NULL` | **PK**, **IDX** | Unique result identifier. |
+| `session_id` | `INTEGER` | `NULL` | **FK** → `assessment_sessions.session_id` | Assessed session. |
+| `submission_id` | `INTEGER` | `NULL` | **FK** → `assessment_submissions.id` | Optional legacy submission. |
+| `c1_visual_signs_score` | `SMALLINT` | `NOT NULL` | — | C1 score: Visual Signs (`0` to `2`, `DEFAULT 0`). |
+| `c2_sentence_comprehension_score` | `SMALLINT` | `NOT NULL` | — | C2 score: Sentence Comprehension (`0` to `2`, `DEFAULT 0`). |
+| `c3_mobile_icons_score` | `SMALLINT` | `NOT NULL` | — | C3 score: Mobile Icons (`0` to `2`, `DEFAULT 0`). |
+| `c4_cybersecurity_score` | `SMALLINT` | `NOT NULL` | — | C4 score: Cybersecurity (`0` to `3`, `DEFAULT 0`). |
+| `total_literacy_score` | `SMALLINT` | `NOT NULL` | — | Cumulative total score (`0` to `9`, `DEFAULT 0`). |
+| `literacy_classification` | `ENUM(LiteracyClassification)` | `NOT NULL` | — | Traffic-light classification: `'RED'` (`0–3`), `'YELLOW'` (`4–6`), `'GREEN'` (`7–9`). |
+| `literacy_score` | `INTEGER` | `NULL` | — | Legacy compatibility field. |
+| `total_score` | `INTEGER` | `NULL` | — | Legacy compatibility field. |
+| `digital_score` | `INTEGER` | `NULL` | — | Legacy compatibility field. |
+| `priority_level` | `INTEGER` | `NULL` | — | Intervention priority level (legacy compatibility). |
 
 ---
 
-### 2.7 Tabla: `rewards`
-Registro de recompensas comunitarias e incentivos IoT emitidos al completar una sesión.
+### 2.7 Table: `rewards`
+Record of community rewards and IoT incentives issued upon session completion.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | `NOT NULL` | **PK** | Identificador único de la recompensa. |
-| `session_id` | `INTEGER` | `NOT NULL` | **FK** → `assessment_sessions.session_id`, **UNIQUE** | Sesión asociada (máximo una recompensa por sesión). |
-| `trigger_type` | `ENUM(TriggerType)` | `NOT NULL` | — | Tipo de activación IoT: `'BEVERAGE_DISPENSER'`, `'WIFI_CREDENTIAL'`, `'POWER_STATION'`, `'NONE'`. |
-| `issued` | `BOOLEAN` | `NOT NULL` | — | Indica si la recompensa fue efectivamente emitida. |
+| `id` | `INTEGER` | `NOT NULL` | **PK** | Unique reward identifier. |
+| `session_id` | `INTEGER` | `NOT NULL` | **FK** → `assessment_sessions.session_id`, **UNIQUE** | Associated session (maximum one reward per session). |
+| `trigger_type` | `ENUM(TriggerType)` | `NOT NULL` | — | IoT activation type: `'BEVERAGE_DISPENSER'`, `'WIFI_CREDENTIAL'`, `'POWER_STATION'`, `'NONE'`. |
+| `issued` | `BOOLEAN` | `NOT NULL` | — | Indicates whether the reward was actually issued. |
 
-**Restricciones `CHECK`:**
+**`CHECK` constraints:**
 - `ck_rewards_issued_trigger_type`: `(issued = false AND trigger_type = 'NONE') OR (issued = true AND trigger_type != 'NONE')`
 
 ---
 
-## 3. Flujo Gamificado PWA (*La Ruta de Nina*) y Telemetría de Visitas
+## 3. Gamified PWA Workflow (*La Ruta de Nina*) and Visit Telemetry
 
-### 3.1 Tabla: `game_sessions`
-Almacena de forma autónoma e idempotente cada partida anónima enviada desde la PWA gamificada (`POST /api/sessions`).
+### 3.1 Table: `game_sessions`
+Autonomously and idempotently stores each anonymous game session submitted from the gamified PWA (`POST /api/sessions`).
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `session_id` | `VARCHAR(40)` | `NOT NULL` | **PK** | ID aleatorio generado en el cliente (ej. `SES-...`). |
-| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **FK** → `kiosks.code`, **IDX** | Kiosco o punto de origen (`fk_game_sessions_kiosk_id_kiosks`). |
-| `origin` | `VARCHAR(10)` | `NOT NULL` | — | Origen de la sesión: `'KIOSK'`, `'UNKNOWN'`, `'MOCK'`. |
-| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indica si jugó en modo asistido (`DEFAULT false`). |
+| `session_id` | `VARCHAR(40)` | `NOT NULL` | **PK** | Random ID generated on the client (e.g., `SES-...`). |
+| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **FK** → `kiosks.code`, **IDX** | Kiosk or origin point (`fk_game_sessions_kiosk_id_kiosks`). |
+| `origin` | `VARCHAR(10)` | `NOT NULL` | — | Session origin: `'KIOSK'`, `'UNKNOWN'`, `'MOCK'`. |
+| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indicates whether the game was played in assisted mode (`DEFAULT false`). |
 | `age_range` | `VARCHAR(10)` | `NULL` | — | `'18_24'`, `'25_34'`, `'35_49'`, `'50_59'`, `'60_PLUS'`. |
 | `work_status` | `VARCHAR(15)` | `NULL` | — | `'FORMAL'`, `'INFORMAL'`, `'HOME'`, `'STUDENT'`, `'UNEMPLOYED'`. |
 | `schooling_level` | `VARCHAR(25)` | `NULL` | — | `'PRIMARY_INCOMPLETE'`, `'PRIMARY_COMPLETE'`, `'SECONDARY_INCOMPLETE'`, `'SECONDARY_COMPLETE'`, `'TERTIARY'`. |
-| `zone_code` | `VARCHAR(10)` | `NULL` | **IDX** | `'Z001'`–`'Z036'` o `'DECLINED'`. |
-| `c1_visual_signs_score` | `SMALLINT` | `NOT NULL` | — | Puntaje C1 (`BETWEEN 0 AND 2`). |
-| `c2_sentence_comprehension_score` | `SMALLINT` | `NOT NULL` | — | Puntaje C2 (`BETWEEN 0 AND 2`). |
-| `c3_mobile_icons_score` | `SMALLINT` | `NOT NULL` | — | Puntaje C3 (`BETWEEN 0 AND 2`). |
-| `c4_cybersecurity_score` | `SMALLINT` | `NOT NULL` | — | Puntaje C4 (`BETWEEN 0 AND 3`). |
-| `total_literacy_score` | `SMALLINT` | `NOT NULL` | — | Suma exacta de `c1 + c2 + c3 + c4` (`BETWEEN 0 AND 9`). |
+| `zone_code` | `VARCHAR(10)` | `NULL` | **IDX** | `'Z001'`–`'Z036'` or `'DECLINED'`. |
+| `c1_visual_signs_score` | `SMALLINT` | `NOT NULL` | — | C1 score (`BETWEEN 0 AND 2`). |
+| `c2_sentence_comprehension_score` | `SMALLINT` | `NOT NULL` | — | C2 score (`BETWEEN 0 AND 2`). |
+| `c3_mobile_icons_score` | `SMALLINT` | `NOT NULL` | — | C3 score (`BETWEEN 0 AND 2`). |
+| `c4_cybersecurity_score` | `SMALLINT` | `NOT NULL` | — | C4 score (`BETWEEN 0 AND 3`). |
+| `total_literacy_score` | `SMALLINT` | `NOT NULL` | — | Exact sum of `c1 + c2 + c3 + c4` (`BETWEEN 0 AND 9`). |
 | `internal_zone_classification` | `VARCHAR(6)` | `NOT NULL` | — | `'RED'` (`<= 3`), `'YELLOW'` (`4..6`), `'GREEN'` (`>= 7`). |
-| `completion_status` | `VARCHAR(10)` | `NOT NULL` | — | `'COMPLETED'` o `'ABANDONED'`. |
-| `last_step` | `VARCHAR(15)` | `NULL` | — | Último paso alcanzado antes de terminar o abandonar. |
-| `duration_seconds` | `INTEGER` | `NOT NULL` | — | Duración en segundos (`>= 0`). |
-| `reward_issued` | `BOOLEAN` | `NOT NULL` | — | Indica si se otorgó recompensa (`DEFAULT false`). |
+| `completion_status` | `VARCHAR(10)` | `NOT NULL` | — | `'COMPLETED'` or `'ABANDONED'`. |
+| `last_step` | `VARCHAR(15)` | `NULL` | — | Last step reached before finishing or abandoning the game. |
+| `duration_seconds` | `INTEGER` | `NOT NULL` | — | Duration in seconds (`>= 0`). |
+| `reward_issued` | `BOOLEAN` | `NOT NULL` | — | Indicates whether a reward was granted (`DEFAULT false`). |
 | `iot_trigger_type` | `VARCHAR(20)` | `NOT NULL` | — | `'NONE'`, `'BEVERAGE_DISPENSER'`, `'POWER_STATION'`, `'WIFI_CREDENTIAL'`. |
-| `repeat_device` | `BOOLEAN` | `NOT NULL` | — | Indica si el navegador ya había reclamado premio en las últimas 24h. |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Marca de tiempo de creación (`DEFAULT NOW()`). |
+| `repeat_device` | `BOOLEAN` | `NOT NULL` | — | Indicates whether the browser had already claimed a reward within the previous 24 hours. |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Creation timestamp (`DEFAULT NOW()`). |
 
 ---
 
-### 3.2 Tabla: `visits`
-Registro anónimo de entradas al sitio para quienes aceptan el aviso de privacidad y son mayores de 18 años.
+### 3.2 Table: `visits`
+Anonymous record of website visits for people who accept the privacy notice and are over 18 years old.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `visit_id` | `VARCHAR(40)` | `NOT NULL` | **PK** | Identificador aleatorio de la visita generado en el cliente. |
-| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **FK** → `kiosks.code`, **IDX** | Kiosco donde se registró la entrada. |
-| `origin` | `VARCHAR(10)` | `NOT NULL` | — | `'KIOSK'` o `'UNKNOWN'`. |
-| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indica si el modo asistido estaba activo (`DEFAULT false`). |
-| `outcome` | `VARCHAR(12)` | `NOT NULL` | — | Estado progresivo: `'ENTERED'`, `'CONSENTED'`, `'ABANDONED'`, `'COMPLETED'`. |
-| `session_id` | `VARCHAR(40)` | `NULL` | **IDX** | Enlace lógico opcional a `game_sessions.session_id`. |
-| `first_seen_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Fecha/hora de inicio de la visita (`DEFAULT NOW()`). |
-| `updated_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Fecha/hora de última actualización (`DEFAULT NOW()`). |
+| `visit_id` | `VARCHAR(40)` | `NOT NULL` | **PK** | Random visit identifier generated on the client. |
+| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **FK** → `kiosks.code`, **IDX** | Kiosk where the visit was recorded. |
+| `origin` | `VARCHAR(10)` | `NOT NULL` | — | `'KIOSK'` or `'UNKNOWN'`. |
+| `assisted_mode` | `BOOLEAN` | `NOT NULL` | — | Indicates whether assisted mode was active (`DEFAULT false`). |
+| `outcome` | `VARCHAR(12)` | `NOT NULL` | — | Progress status: `'ENTERED'`, `'CONSENTED'`, `'ABANDONED'`, `'COMPLETED'`. |
+| `session_id` | `VARCHAR(40)` | `NULL` | **IDX** | Optional logical link to `game_sessions.session_id`. |
+| `first_seen_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Visit start date/time (`DEFAULT NOW()`). |
+| `updated_at` | `TIMESTAMPTZ` | `NOT NULL` | — | Date/time of the last update (`DEFAULT NOW()`). |
 
 ---
 
-### 3.3 Tabla: `daily_counters`
-Conteo diario agregado de personas que declinan el consentimiento de privacidad (`DECLINED_PRIVACY`) o indican ser menores de 18 años (`UNDER_18`). Cumple con la Ley 81 al no conservar filas individuales para estos casos.
+### 3.3 Table: `daily_counters`
+Daily aggregated count of people who decline privacy consent (`DECLINED_PRIVACY`) or indicate that they are under 18 (`UNDER_18`). Complies with Law 81 by not retaining individual rows for these cases.
 
-| Columna | Tipo SQL | Nulable | Llave / Índice | Descripción y Restricciones |
+| Column | SQL Type | Nullable | Key / Index | Description and Constraints |
 | :--- | :--- | :--- | :--- | :--- |
-| `day` | `DATE` | `NOT NULL` | **PK (1/3)** | Fecha del conteo agregado. |
-| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **PK (2/3)**, **FK** → `kiosks.code` | Kiosco asociado. |
-| `outcome` | `VARCHAR(16)` | `NOT NULL` | **PK (3/3)** | Motivo de salida: `'DECLINED_PRIVACY'` o `'UNDER_18'`. |
-| `entries` | `INTEGER` | `NOT NULL` | — | Cantidad acumulada en el día (`entries >= 0`). |
+| `day` | `DATE` | `NOT NULL` | **PK (1/3)** | Date of the aggregated count. |
+| `kiosk_id` | `VARCHAR(20)` | `NOT NULL` | **PK (2/3)**, **FK** → `kiosks.code` | Associated kiosk. |
+| `outcome` | `VARCHAR(16)` | `NOT NULL` | **PK (3/3)** | Exit reason: `'DECLINED_PRIVACY'` or `'UNDER_18'`. |
+| `entries` | `INTEGER` | `NOT NULL` | — | Accumulated count for the day (`entries >= 0`). |
 
 ---
 
-## 4. Tablas de Compatibilidad Legada
+## 4. Legacy Compatibility Tables
 
-Para mantener compatibilidad con migraciones iniciales del proyecto, el esquema incluye además las siguientes entidades ORM:
+To maintain compatibility with the project's initial migrations, the schema also includes the following ORM entities:
 
 - **`locations`** (`id` PK, `country`, `city`, `zone_name`)
 - **`demographic_profiles`** (`id` PK, `age_group`, `education_level`, `employment_status`)
@@ -243,21 +243,21 @@ Para mantener compatibilidad con migraciones iniciales del proyecto, el esquema 
 
 ---
 
-## 5. Diagrama Entidad-Relación (Mermaid)
+## 5. Entity-Relationship Diagram (Mermaid)
 
 ```mermaid
 erDiagram
-    ZONES ||--o{ KIOSKS : "ubica"
-    ZONES ||--o{ ASSESSMENT_SESSIONS : "pertenece"
-    ACCESS_POINTS ||--o{ ASSESSMENT_SESSIONS : "inicia en"
-    ASSESSMENT_SESSIONS ||--o| ASSESSMENT_RESULTS : "produce"
-    ASSESSMENT_SESSIONS ||--o| REWARDS : "otorga"
-    ASSESSMENT_SESSIONS ||--o{ SESSION_QUESTIONS : "contiene 6"
-    QUESTIONS ||--o{ QUESTION_OPTIONS : "tiene opciones"
-    QUESTIONS ||--o{ SESSION_QUESTIONS : "asignada a"
-    SESSION_QUESTIONS ||--o| SESSION_ANSWERS : "respondida en"
-    QUESTION_OPTIONS ||--o{ SESSION_ANSWERS : "seleccionada en"
-    KIOSKS ||--o{ GAME_SESSIONS : "registra"
-    KIOSKS ||--o{ VISITS : "recibe"
-    KIOSKS ||--o{ DAILY_COUNTERS : "acumula"
+    ZONES ||--o{ KIOSKS : "locates"
+    ZONES ||--o{ ASSESSMENT_SESSIONS : "belongs to"
+    ACCESS_POINTS ||--o{ ASSESSMENT_SESSIONS : "starts at"
+    ASSESSMENT_SESSIONS ||--o| ASSESSMENT_RESULTS : "produces"
+    ASSESSMENT_SESSIONS ||--o| REWARDS : "awards"
+    ASSESSMENT_SESSIONS ||--o{ SESSION_QUESTIONS : "contains 6"
+    QUESTIONS ||--o{ QUESTION_OPTIONS : "has options"
+    QUESTIONS ||--o{ SESSION_QUESTIONS : "assigned to"
+    SESSION_QUESTIONS ||--o| SESSION_ANSWERS : "answered in"
+    QUESTION_OPTIONS ||--o{ SESSION_ANSWERS : "selected in"
+    KIOSKS ||--o{ GAME_SESSIONS : "records"
+    KIOSKS ||--o{ VISITS : "receives"
+    KIOSKS ||--o{ DAILY_COUNTERS : "accumulates"
 ```
