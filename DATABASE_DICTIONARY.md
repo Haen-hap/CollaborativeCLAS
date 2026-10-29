@@ -1,4 +1,4 @@
-# Data Dictionary — CCLAS (Collaborative Community Literacy Assessment System)
+# Data Dictionary: Collaborative Community Literacy Assessment System
 
 This document provides a comprehensive description of the relational database schema (PostgreSQL / SQLAlchemy ORM) of the **CCLAS** system, including catalog tables, the structured assessment workflow, the gamified workflow (*La Ruta de Nina*), anonymous visit metrics, primary and foreign keys, and integrity constraints (`CHECK` and `UNIQUE`).
 
