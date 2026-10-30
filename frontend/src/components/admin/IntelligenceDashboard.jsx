@@ -172,35 +172,57 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
 
   const zones = rankingData?.zones || [];
   const kiosks = dispersalData?.kiosks || [];
-  const topZone = zones[0] || null;
   const outlierKiosks = useMemo(
     () => kiosks.filter((kiosk) => kiosk.is_outlier),
     [kiosks],
   );
   const topDispersalKiosk = outlierKiosks[0] || kiosks[0] || null;
 
+  // Severity-aware headline: a 0% critical index must never read as an alarm.
   const primaryAiAlert = useMemo(() => {
-    if (!topZone) {
-      return "⚠️ ALERTA IA: Sin registros territoriales suficientes para estimar el índice de vulnerabilidad crítica.";
+    const rankedZones = rankingData?.zones || [];
+    const leadZone = rankedZones[0] || null;
+    if (!leadZone) {
+      return {
+        tone: "neutral",
+        label: "",
+        text: "Sin registros territoriales suficientes para estimar el índice de vulnerabilidad crítica.",
+      };
     }
-    return `⚠️ ALERTA IA: La zona ${topZone.zone_name} (${topZone.zone_code}) tiene un índice crítico de ${Number(topZone.critical_literacy_index).toFixed(1)}%. Se sugiere despliegue urgente de campaña educativa de Ciberseguridad.`;
-  }, [topZone]);
+    const leadIndex = Number(leadZone.critical_literacy_index || 0);
+    if (leadIndex === 0 || leadZone.red_sessions === 0) {
+      const lowestAverageZone = rankedZones.reduce((lowest, zone) =>
+        Number(zone.avg_total_score || 0) < Number(lowest.avg_total_score || 0)
+          ? zone
+          : lowest,
+      );
+      return {
+        tone: "neutral",
+        label: "",
+        text: `Sin sesiones críticas registradas en el corte actual. La zona con menor promedio relativo es ${lowestAverageZone.zone_name} (${Number(lowestAverageZone.avg_total_score || 0).toFixed(1)} / 9); se sugiere seguimiento preventivo.`,
+      };
+    }
+    return {
+      tone: "critical",
+      label: "Atención prioritaria:",
+      text: `La zona ${leadZone.zone_name} (${leadZone.zone_code}) tiene un índice crítico de ${leadIndex.toFixed(1)}%. Se sugiere despliegue urgente de campaña educativa de Ciberseguridad.`,
+    };
+  }, [rankingData]);
 
   return (
-    <div className="ai-dashboard" aria-label="Panel de Inteligencia IA y Pre-ML">
-      <div className="ai-status-bar">
-        <div className="ai-status-meta">
-          <span className={`ai-badge ${isLive ? "is-live" : "is-fallback"}`}>
-            {isLive
-              ? "🟢 Motor SQLAlchemy Pre-ML en Vivo"
-              : "🧪 Dataset Pre-ML de Demostración"}
+    <div className="ai-dashboard" aria-label="Panel de análisis e inteligencia">
+      <div className="ai-subheader">
+        <div className="ai-subheader-status">
+          <span className={`ai-status ${isLive ? "is-live" : "is-fallback"}`}>
+            <span className="ai-dot" aria-hidden="true" />
+            {isLive ? "Datos conectados" : "Datos de demostración"}
           </span>
-          <span>
-            Endpoints: <code>/api/analytics/vulnerability-ranking</code> ·{" "}
-            <code>/api/analytics/kiosk-c4-dispersal</code>
-          </span>
-          {loading && <span>Sincronizando consultas analíticas…</span>}
-          {errorMsg && <span>({errorMsg})</span>}
+          {loading && <span>Sincronizando…</span>}
+          {errorMsg && (
+            <span className="ai-subheader-warning">
+              No fue posible sincronizar; se muestra la muestra base.
+            </span>
+          )}
         </div>
         <div className="ai-status-actions">
           <button
@@ -208,7 +230,7 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
             className="ai-btn"
             onClick={() => fetchIntelligenceData()}
           >
-            Actualizar consultas SQL
+            Sincronizar
           </button>
           <button
             type="button"
@@ -219,41 +241,53 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
               setIsLive(false);
             }}
           >
-            Ver escenario Pre-ML demostrativo
+            Cargar muestra base
           </button>
         </div>
       </div>
 
-      {/* Sección 3 destacada arriba: AI Automated Insights (Sugerencias IA) */}
-      <section className="ai-insights-card" aria-label="Sugerencias automatizadas de IA">
+      {/* Resumen operativo: hallazgos prioritarios y recomendaciones */}
+      <section
+        className={`ai-insights-card ${primaryAiAlert.tone === "critical" ? "is-critical" : "is-neutral"}`}
+        aria-label="Hallazgos prioritarios y recomendaciones"
+      >
         <div className="ai-insights-header">
           <div>
-            <p className="ai-eyebrow">AI Automated Insights · Feature Store Readiness</p>
-            <h2>Sugerencias IA y Diagnóstico Automatizado</h2>
+            <p className="ai-eyebrow">Resumen operativo</p>
+            <h2>Hallazgos prioritarios y recomendaciones</h2>
           </div>
           <span className="ai-metric-pill">
-            Índice Crítico Global: {Number(rankingData?.global_avg_critical_index || 0).toFixed(1)}%
+            Índice crítico global: {Number(rankingData?.global_avg_critical_index || 0).toFixed(1)}%
           </span>
         </div>
 
         <p className="ai-primary-alert" role="status">
-          {primaryAiAlert}
+          {primaryAiAlert.label && <strong>{primaryAiAlert.label} </strong>}
+          {primaryAiAlert.text}
         </p>
 
         <ul className="ai-secondary-insights">
           {topDispersalKiosk && (
             <li>
               <strong>
-                🔍 Anomalía en Kiosco {topDispersalKiosk.kiosk_id} ({topDispersalKiosk.kiosk_name})
+                <span className="ai-dot is-warning" aria-hidden="true" />
+                {outlierKiosks.length > 0
+                  ? "Variación detectada en punto de acceso"
+                  : "Punto de acceso con mayor dispersión"}{" "}
+                {topDispersalKiosk.kiosk_id} ({topDispersalKiosk.kiosk_name})
               </strong>
               Presenta una desviación estándar en Ciberseguridad (C4) de{" "}
               <b>σ = {Number(topDispersalKiosk.stddev_c4_score).toFixed(2)}</b> (rango intercuartílico IQR ={" "}
-              {Number(topDispersalKiosk.iqr_c4_score).toFixed(1)}). Se recomienda activar modo asistido
-              en este punto para nivelar brechas digitales.
+              {Number(topDispersalKiosk.iqr_c4_score).toFixed(1)}).
+              {outlierKiosks.length > 0 &&
+                " Se recomienda activar modo asistido en este punto para nivelar brechas digitales."}
             </li>
           )}
           <li>
-            <strong>📊 Estado de Outliers en C4 (Ciberseguridad)</strong>
+            <strong>
+              <span className="ai-dot is-info" aria-hidden="true" />
+              Variabilidad en competencia C4 (Ciberseguridad)
+            </strong>
             Se detectaron <b>{outlierKiosks.length}</b> punto(s) de acceso con alta varianza o desviación
             respecto a la media global ({Number(dispersalData?.global_avg_c4_score || 0).toFixed(2)} / 3.0).
           </li>
@@ -261,14 +295,15 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
       </section>
 
       <div className="ai-grid">
-        {/* Sección 1: Top Vulnerability Ranking */}
+        {/* Sección 1: Prioridad territorial por zona */}
         <article className="ai-panel" aria-label="Ranking de vulnerabilidad por zona">
           <div className="ai-panel-header">
             <div>
-              <p className="ai-eyebrow">Query 1 · Window RANK() OVER</p>
-              <h2>Top Vulnerability Ranking por Zona</h2>
+              <p className="ai-eyebrow">Índice de vulnerabilidad territorial</p>
+              <h2>Prioridad territorial por zona</h2>
               <p className="ai-panel-subtitle">
-                Clasificación según porcentaje de sesiones en categoría crítica (RED). Top 1 resaltado en rojo.
+                Clasificación según porcentaje de sesiones en categoría crítica. La zona líder solo se resalta
+                en rojo cuando existen sesiones críticas.
               </p>
             </div>
             <span className="ai-metric-pill">{zones.length} zonas evaluadas</span>
@@ -278,42 +313,55 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
             <table className="ai-table">
               <thead>
                 <tr>
-                  <th>Rank</th>
+                  <th>Rango</th>
                   <th>Zona</th>
-                  <th>Sesiones (R/Y/G)</th>
+                  <th>Sesiones (crít. / ref. / aut.)</th>
                   <th>Promedio</th>
-                  <th>Índice Crítico (% RED)</th>
+                  <th>Índice crítico (% sesiones críticas)</th>
                 </tr>
               </thead>
               <tbody>
                 {zones.map((zone, idx) => {
                   const isTop1 = zone.vulnerability_rank === 1 || idx === 0;
                   const indexVal = Number(zone.critical_literacy_index || 0);
-                  const barClass = isTop1
+                  const isCritical = isTop1 && indexVal > 0 && zone.red_sessions !== 0;
+                  const barClass = isCritical
                     ? "is-red"
                     : indexVal >= 40
                       ? "is-yellow"
                       : "";
+                  const rankClass = isCritical
+                    ? "is-top1"
+                    : isTop1
+                      ? "is-neutral"
+                      : "";
                   return (
                     <tr
                       key={zone.zone_code}
-                      className={isTop1 ? "ai-row-top1" : ""}
+                      className={isCritical ? "ai-row-top1" : ""}
                     >
                       <td>
-                        <span className={`ai-rank-badge ${isTop1 ? "is-top1" : ""}`}>
+                        <span className={`ai-rank-badge ${rankClass}`}>
                           #{zone.vulnerability_rank}
                         </span>
                       </td>
                       <td className="ai-zone-cell">
                         <strong>
-                          {zone.zone_name} {isTop1 ? "· CRÍTICO" : ""}
+                          {zone.zone_name}
+                          {isTop1 && (
+                            <span
+                              className={`ai-tag ${isCritical ? "is-danger" : "is-neutral"}`}
+                            >
+                              {isCritical ? "PRIORIDAD" : "SEGUIMIENTO"}
+                            </span>
+                          )}
                         </strong>
                         <span>Código {zone.zone_code}</span>
                       </td>
                       <td>
                         {zone.total_sessions}{" "}
                         <small>
-                          ({zone.red_sessions}R / {zone.yellow_sessions}Y / {zone.green_sessions}G)
+                          ({zone.red_sessions} / {zone.yellow_sessions} / {zone.green_sessions})
                         </small>
                       </td>
                       <td>{Number(zone.avg_total_score || 0).toFixed(1)} / 9</td>
@@ -336,14 +384,14 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
           </div>
         </article>
 
-        {/* Sección 2: C4 Outlier Detection */}
-        <article className="ai-panel" aria-label="Detección de outliers en Ciberseguridad C4">
+        {/* Sección 2: Dispersión y variabilidad C4 (matriz operativa) */}
+        <article className="ai-panel" aria-label="Dispersión y variabilidad en competencia C4">
           <div className="ai-panel-header">
             <div>
-              <p className="ai-eyebrow">Query 2 · Dispersión y Percentiles C4</p>
-              <h2>C4 Outlier Detection por Kiosco</h2>
+              <p className="ai-eyebrow">Distribución estadística por punto</p>
+              <h2>Dispersión y variabilidad por kiosco</h2>
               <p className="ai-panel-subtitle">
-                Desviación estándar (σ), cuartiles (P25/P50/P75) y duración en Ciberseguridad.
+                Desviación estándar (σ), rango intercuartílico (P25–P75) y duración en Ciberseguridad.
               </p>
             </div>
             <span className="ai-metric-pill">
@@ -351,57 +399,56 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
             </span>
           </div>
 
-          <div className="ai-kiosk-list">
-            {kiosks.map((kiosk) => (
-              <div
-                key={kiosk.kiosk_id}
-                className={`ai-kiosk-card ${kiosk.is_outlier ? "is-outlier" : ""}`}
-              >
-                <div className="ai-kiosk-top">
-                  <div className="ai-kiosk-title">
-                    <strong>
-                      #{kiosk.dispersal_rank} · {kiosk.kiosk_name}
-                    </strong>
-                    <span>
-                      ID: {kiosk.kiosk_id}
-                      {kiosk.zone_code ? ` · Zona ${kiosk.zone_code}` : " · Canal Web"} ·{" "}
-                      {kiosk.total_sessions} sesiones
-                    </span>
-                  </div>
-                  <span
-                    className={`ai-outlier-tag ${
-                      kiosk.is_outlier ? "is-alert" : "is-normal"
-                    }`}
+          <div className="ai-table-wrap">
+            <table className="ai-table ai-matrix">
+              <thead>
+                <tr>
+                  <th>Punto de acceso</th>
+                  <th>Sesiones</th>
+                  <th>Media C4</th>
+                  <th>Dispersión (σ · IQR)</th>
+                  <th>Duración media</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kiosks.map((kiosk) => (
+                  <tr
+                    key={kiosk.kiosk_id}
+                    className={kiosk.is_outlier ? "is-review" : ""}
                   >
-                    {kiosk.is_outlier ? "⚠️ OUTLIER DETECTADO" : "✓ DISPERSIÓN NORMAL"}
-                  </span>
-                </div>
-
-                <div className="ai-kiosk-metrics">
-                  <div className="ai-kiosk-metric">
-                    <small>Media C4</small>
-                    <strong>{Number(kiosk.avg_c4_score).toFixed(2)} / 3</strong>
-                  </div>
-                  <div className="ai-kiosk-metric">
-                    <small>Desv. Estándar (σ)</small>
-                    <strong>{Number(kiosk.stddev_c4_score).toFixed(2)}</strong>
-                  </div>
-                  <div className="ai-kiosk-metric">
-                    <small>P25 / Mediana / P75</small>
-                    <strong>
-                      {kiosk.p25_c4_score} / {kiosk.p50_c4_score} / {kiosk.p75_c4_score}
-                    </strong>
-                  </div>
-                  <div className="ai-kiosk-metric">
-                    <small>Duración (μ ± σ)</small>
-                    <strong>
+                    <td className="ai-kiosk-cell">
+                      <strong>
+                        #{kiosk.dispersal_rank} · {kiosk.kiosk_name}
+                      </strong>
+                      <span>
+                        ID: {kiosk.kiosk_id}
+                        {kiosk.zone_code ? ` · Zona ${kiosk.zone_code}` : " · Canal Web"}
+                      </span>
+                    </td>
+                    <td>{kiosk.total_sessions}</td>
+                    <td>{Number(kiosk.avg_c4_score).toFixed(2)} / 3</td>
+                    <td>
+                      <strong>σ {Number(kiosk.stddev_c4_score).toFixed(2)}</strong>
+                      <small>
+                        IQR {Number(kiosk.iqr_c4_score).toFixed(1)} · P25–P75 {kiosk.p25_c4_score}–{kiosk.p75_c4_score}
+                      </small>
+                    </td>
+                    <td>
                       {Math.round(kiosk.avg_duration_seconds)}s ±{" "}
                       {Math.round(kiosk.stddev_duration_seconds)}s
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td>
+                      <span
+                        className={`ai-tag ${kiosk.is_outlier ? "is-warning" : "is-success"}`}
+                      >
+                        {kiosk.is_outlier ? "Revisar dispersión" : "Estable"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </article>
       </div>
