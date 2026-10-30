@@ -126,72 +126,265 @@ body {
   transform: translateY(0);
 }
 
-/* QR entry page for organizers */
-.qr-page {
+/* ===== GBM Corporate Credential & QR Print Widget (/qr) ===== */
+.gbm-credential-stage {
+  --gbm-navy: #0A192F;
+  --gbm-cyan: #0072CE;
+  --gbm-light: #FFFFFF;
+  --gbm-gray: #F4F6F9;
+  --gbm-charcoal: #1C2530;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 28px 18px;
+  background-color: #0A192F;
+  background-image: radial-gradient(
+    circle at 50% 0%,
+    rgba(0, 114, 206, 0.22) 0%,
+    rgba(10, 25, 47, 0) 68%
+  );
+  color: #1C2530;
 }
 
-.qr-card {
-  width: min(100%, 520px);
-  padding: 36px;
+.gbm-print-widget {
+  width: min(100%, 440px);
+  background: #FFFFFF;
+  color: #1C2530;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 114, 206, 0.28);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  text-align: center;
-  background: rgba(17, 24, 39, 0.9);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
-.qr-eyebrow {
-  color: #a5b4fc;
-  font-size: 13px;
+.gbm-credential-banner {
+  background: #0A192F;
+  color: #FFFFFF;
+  padding: 18px 24px 20px;
+  border-bottom: 3px solid #0072CE;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gbm-lanyard-slot {
+  width: 56px;
+  height: 7px;
+  margin: 0 auto 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gbm-credential-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gbm-brand-monogram {
+  display: inline-flex;
+  align-items: baseline;
+  font: 700 18px Fredoka, system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  color: #FFFFFF;
+}
+
+.gbm-brand-monogram b {
+  color: #0072CE;
+  background: #FFFFFF;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  margin-left: 7px;
+  letter-spacing: 0.08em;
+}
+
+.gbm-credential-badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0, 114, 206, 0.32);
+  border: 1px solid #0072CE;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.gbm-credential-kicker {
+  margin: 6px 0 0;
+  color: #F4F6F9;
+  opacity: 0.82;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.qr-card h1 {
-  color: #f3f4f6;
-  font-size: 30px;
+
+.gbm-credential-title {
+  margin: 0;
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
-.qr-intro,
-.qr-note {
-  color: var(--text-dim);
+
+.gbm-credential-body {
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: #FFFFFF;
+}
+
+.gbm-credential-summary {
+  margin: 0;
+  color: #1C2530;
   font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
 }
-.qr-image {
-  width: min(100%, 320px);
+
+.gbm-matrix-frame {
+  margin: 0;
+  padding: 16px;
+  background: #F4F6F9;
+  border: 1px solid rgba(10, 25, 47, 0.12);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.gbm-matrix-canvas {
+  width: min(100%, 248px);
   height: auto;
-  border: 12px solid #fff;
-  border-radius: 8px;
+  display: block;
+  background: #FFFFFF;
+  padding: 8px;
+  border-radius: 10px;
+  border: 2px solid #0A192F;
   image-rendering: pixelated;
 }
-.qr-url {
-  color: #c7d2fe;
+
+.gbm-matrix-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #1C2530;
+  opacity: 0.72;
+}
+
+.gbm-matrix-fault {
+  font-size: 12px;
+  font-weight: 700;
+  color: #EF4444;
+  text-align: center;
+}
+
+.gbm-credential-meta {
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  background: #F4F6F9;
+  border-radius: 12px;
+  border-left: 4px solid #0072CE;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.gbm-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gbm-meta-item dt {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #1C2530;
+  opacity: 0.68;
+}
+
+.gbm-meta-item dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0A192F;
+}
+
+.gbm-endpoint-link {
+  color: #0072CE;
+  text-decoration: none;
   overflow-wrap: anywhere;
 }
-.qr-download {
-  border: 0;
-  border-radius: 10px;
-  padding: 12px 18px;
-  color: #fff;
-  background: var(--primary);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
+
+.gbm-endpoint-link:hover {
+  text-decoration: underline;
 }
-.qr-download:disabled {
+
+.gbm-credential-footer {
+  padding: 16px 24px 22px;
+  background: #F4F6F9;
+  border-top: 1px solid rgba(10, 25, 47, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gbm-export-trigger {
+  min-height: 48px;
+  width: 100%;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #0072CE;
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #0A192F;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.gbm-export-trigger:hover:not(:disabled) {
+  background: #005DA8;
+}
+
+.gbm-export-trigger:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #0A192F;
+}
+
+.gbm-export-trigger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.qr-error {
-  color: #fca5a5;
+
+.gbm-network-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1C2530;
+  opacity: 0.75;
+  text-align: center;
 }
 
 /* Modal */

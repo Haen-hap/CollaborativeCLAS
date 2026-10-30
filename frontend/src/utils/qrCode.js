@@ -1,177 +1,325 @@
-// Compact byte-mode QR encoder (error correction level L, versions 1–5).
-// This keeps QR generation local and avoids a runtime service or dependency.
-const GF_EXP = new Uint8Array(512);
-const GF_LOG = new Uint8Array(256);
-let gfValue = 1;
+/**
+ * Autonomous ISO/IEC 18004 Byte-Mode QR Matrix Synthesizer (Level L, v1–v5).
+ * Generates 2D boolean module grids and renders directly onto HTMLCanvasElement
+ * surfaces without external runtime dependencies.
+ */
 
-for (let index = 0; index < 255; index += 1) {
-  GF_EXP[index] = gfValue;
-  GF_LOG[gfValue] = index;
-  gfValue <<= 1;
-  if (gfValue & 0x100) gfValue ^= 0x11d;
-}
-for (let index = 255; index < GF_EXP.length; index += 1) {
-  GF_EXP[index] = GF_EXP[index - 255];
-}
+const GALOIS_EXP_TABLE = new Uint8Array(512);
+const GALOIS_LOG_TABLE = new Uint8Array(256);
 
-const BLOCKS = [null, [[1, 26, 19]], [[1, 44, 34]], [[1, 70, 55]], [[1, 100, 80]], [[1, 134, 108]]];
-const ALIGNMENT = [[], [], [6, 18], [6, 22], [6, 26], [6, 30]];
-
-function multiply(a, b) {
-  return a && b ? GF_EXP[GF_LOG[a] + GF_LOG[b]] : 0;
-}
-
-function makeGenerator(degree) {
-  let polynomial = [1];
-  for (let index = 0; index < degree; index += 1) {
-    const next = new Array(polynomial.length + 1).fill(0);
-    polynomial.forEach((coefficient, position) => {
-      next[position] ^= coefficient;
-      next[position + 1] ^= multiply(coefficient, GF_EXP[index]);
-    });
-    polynomial = next;
-  }
-  return polynomial;
-}
-
-function errorCorrection(data, degree) {
-  const generator = makeGenerator(degree);
-  const result = [...data, ...new Array(degree).fill(0)];
-  for (let index = 0; index < data.length; index += 1) {
-    const factor = result[index];
-    if (factor) {
-      generator.forEach((coefficient, offset) => {
-        result[index + offset] ^= multiply(coefficient, factor);
-      });
+(function bootstrapGaloisField() {
+  let accumulator = 1;
+  for (let idx = 0; idx < 255; idx += 1) {
+    GALOIS_EXP_TABLE[idx] = accumulator;
+    GALOIS_LOG_TABLE[accumulator] = idx;
+    accumulator <<= 1;
+    if (accumulator & 0x100) {
+      accumulator ^= 0x11d;
     }
   }
-  return result.slice(data.length);
-}
-
-function appendBits(bits, value, length) {
-  for (let bit = length - 1; bit >= 0; bit -= 1) bits.push((value >>> bit) & 1);
-}
-
-function makeData(text) {
-  const bytes = new TextEncoder().encode(text);
-  const version = [1, 2, 3, 4, 5].find((item) => bytes.length <= BLOCKS[item][0][2] - 2);
-  if (!version) throw new Error("URL is too long for the built-in QR generator.");
-
-  const [, totalCodewords, dataCodewords] = BLOCKS[version][0];
-  const bits = [];
-  appendBits(bits, 0b0100, 4);
-  appendBits(bits, bytes.length, version < 10 ? 8 : 16);
-  bytes.forEach((byte) => appendBits(bits, byte, 8));
-  const maxBits = dataCodewords * 8;
-  appendBits(bits, 0, Math.min(4, maxBits - bits.length));
-  while (bits.length % 8) bits.push(0);
-
-  const data = [];
-  for (let index = 0; index < bits.length; index += 8) {
-    data.push(bits.slice(index, index + 8).reduce((value, bit) => (value << 1) | bit, 0));
+  for (let idx = 255; idx < GALOIS_EXP_TABLE.length; idx += 1) {
+    GALOIS_EXP_TABLE[idx] = GALOIS_EXP_TABLE[idx - 255];
   }
-  for (let pad = 0; data.length < dataCodewords; pad += 1) data.push(pad % 2 ? 0x11 : 0xec);
-  return { version, totalCodewords, dataCodewords, data };
-}
+})();
 
-function bch(value, polynomial) {
-  let result = value;
-  const degree = 31 - Math.clz32(polynomial);
-  while (result && 31 - Math.clz32(result) >= degree) {
-    result ^= polynomial << (31 - Math.clz32(result) - degree);
+const VERSION_CAPACITY_SPECS = Object.freeze({
+  1: { totalBytes: 26, payloadBytes: 19, alignmentCenters: [] },
+  2: { totalBytes: 44, payloadBytes: 34, alignmentCenters: [6, 18] },
+  3: { totalBytes: 70, payloadBytes: 55, alignmentCenters: [6, 22] },
+  4: { totalBytes: 100, payloadBytes: 80, alignmentCenters: [6, 26] },
+  5: { totalBytes: 134, payloadBytes: 108, alignmentCenters: [6, 30] },
+});
+
+function galoisMultiply(leftFactor, rightFactor) {
+  if (leftFactor === 0 || rightFactor === 0) {
+    return 0;
   }
-  return result;
+  return GALOIS_EXP_TABLE[
+    GALOIS_LOG_TABLE[leftFactor] + GALOIS_LOG_TABLE[rightFactor]
+  ];
 }
 
-function createMatrix(version, codewords) {
-  const size = version * 4 + 17;
-  const modules = Array.from({ length: size }, () => new Array(size).fill(null));
-  const set = (x, y, value) => {
-    if (x >= 0 && y >= 0 && x < size && y < size) modules[y][x] = Boolean(value);
+function buildReedSolomonGenerator(eccDegree) {
+  let poly = [1];
+  for (let step = 0; step < eccDegree; step += 1) {
+    const nextPoly = new Array(poly.length + 1).fill(0);
+    for (let pos = 0; pos < poly.length; pos += 1) {
+      nextPoly[pos] ^= poly[pos];
+      nextPoly[pos + 1] ^= galoisMultiply(poly[pos], GALOIS_EXP_TABLE[step]);
+    }
+    poly = nextPoly;
+  }
+  return poly;
+}
+
+function computeParityBytes(payloadCodewords, eccDegree) {
+  const generatorPoly = buildReedSolomonGenerator(eccDegree);
+  const register = [
+    ...payloadCodewords,
+    ...new Array(eccDegree).fill(0),
+  ];
+
+  for (let idx = 0; idx < payloadCodewords.length; idx += 1) {
+    const leadCoefficient = register[idx];
+    if (leadCoefficient !== 0) {
+      for (let offset = 0; offset < generatorPoly.length; offset += 1) {
+        register[idx + offset] ^= galoisMultiply(
+          generatorPoly[offset],
+          leadCoefficient,
+        );
+      }
+    }
+  }
+
+  return register.slice(payloadCodewords.length);
+}
+
+function pushBitSequence(targetBits, numericValue, bitWidth) {
+  for (let shift = bitWidth - 1; shift >= 0; shift -= 1) {
+    targetBits.push((numericValue >>> shift) & 1);
+  }
+}
+
+function encodePayloadStream(rawText) {
+  const utf8Octets = new TextEncoder().encode(rawText);
+  const selectedVersion = [1, 2, 3, 4, 5].find(
+    (ver) => utf8Octets.length <= VERSION_CAPACITY_SPECS[ver].payloadBytes - 2,
+  );
+
+  if (!selectedVersion) {
+    throw new Error(
+      "Target URI exceeds the maximum byte capacity for local QR synthesis.",
+    );
+  }
+
+  const { totalBytes, payloadBytes } = VERSION_CAPACITY_SPECS[selectedVersion];
+  const bitStream = [];
+
+  // Byte mode indicator (0100) + character count
+  pushBitSequence(bitStream, 0b0100, 4);
+  pushBitSequence(bitStream, utf8Octets.length, 8);
+  for (const octet of utf8Octets) {
+    pushBitSequence(bitStream, octet, 8);
+  }
+
+  const capacityBits = payloadBytes * 8;
+  pushBitSequence(bitStream, 0, Math.min(4, capacityBits - bitStream.length));
+  while (bitStream.length % 8 !== 0) {
+    bitStream.push(0);
+  }
+
+  const payloadCodewords = [];
+  for (let cursor = 0; cursor < bitStream.length; cursor += 8) {
+    let byteVal = 0;
+    for (let bitOffset = 0; bitOffset < 8; bitOffset += 1) {
+      byteVal = (byteVal << 1) | bitStream[cursor + bitOffset];
+    }
+    payloadCodewords.push(byteVal);
+  }
+
+  const padAlternator = [0xec, 0x11];
+  let padIdx = 0;
+  while (payloadCodewords.length < payloadBytes) {
+    payloadCodewords.push(padAlternator[padIdx % 2]);
+    padIdx += 1;
+  }
+
+  return {
+    version: selectedVersion,
+    totalBytes,
+    payloadBytes,
+    payloadCodewords,
+  };
+}
+
+function calculateBchRemainder(value, generatorBits) {
+  let remainder = value;
+  const polyDegree = 31 - Math.clz32(generatorBits);
+  while (remainder !== 0 && 31 - Math.clz32(remainder) >= polyDegree) {
+    remainder ^=
+      generatorBits << (31 - Math.clz32(remainder) - polyDegree);
+  }
+  return remainder;
+}
+
+function assembleModuleGrid(version, fullCodewords) {
+  const dimension = version * 4 + 17;
+  const grid = Array.from({ length: dimension }, () =>
+    new Array(dimension).fill(null),
+  );
+
+  const assignCell = (col, row, isDark) => {
+    if (col >= 0 && row >= 0 && col < dimension && row < dimension) {
+      grid[row][col] = Boolean(isDark);
+    }
   };
 
-  const finder = (cx, cy) => {
+  const stampFinderPattern = (centerCol, centerRow) => {
     for (let dy = -4; dy <= 4; dy += 1) {
       for (let dx = -4; dx <= 4; dx += 1) {
-        const distance = Math.max(Math.abs(dx), Math.abs(dy));
-        set(cx + dx, cy + dy, distance !== 2 && distance !== 4);
+        const chebyshevRadius = Math.max(Math.abs(dx), Math.abs(dy));
+        assignCell(
+          centerCol + dx,
+          centerRow + dy,
+          chebyshevRadius !== 2 && chebyshevRadius !== 4,
+        );
       }
     }
   };
-  finder(3, 3);
-  finder(size - 4, 3);
-  finder(3, size - 4);
 
-  for (let index = 8; index < size - 8; index += 1) {
-    if (modules[6][index] === null) set(index, 6, index % 2 === 0);
-    if (modules[index][6] === null) set(6, index, index % 2 === 0);
+  stampFinderPattern(3, 3);
+  stampFinderPattern(dimension - 4, 3);
+  stampFinderPattern(3, dimension - 4);
+
+  for (let pos = 8; pos < dimension - 8; pos += 1) {
+    if (grid[6][pos] === null) assignCell(pos, 6, pos % 2 === 0);
+    if (grid[pos][6] === null) assignCell(6, pos, pos % 2 === 0);
   }
 
-  ALIGNMENT[version].forEach((cy) => ALIGNMENT[version].forEach((cx) => {
-    if (modules[cy][cx] !== null) return;
-    for (let dy = -2; dy <= 2; dy += 1) {
-      for (let dx = -2; dx <= 2; dx += 1) {
-        set(cx + dx, cy + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  const { alignmentCenters } = VERSION_CAPACITY_SPECS[version];
+  for (const centerRow of alignmentCenters) {
+    for (const centerCol of alignmentCenters) {
+      if (grid[centerRow][centerCol] !== null) continue;
+      for (let dy = -2; dy <= 2; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          assignCell(
+            centerCol + dx,
+            centerRow + dy,
+            Math.max(Math.abs(dx), Math.abs(dy)) !== 1,
+          );
+        }
       }
     }
-  }));
-
-  // Reserve format information and the fixed dark module.
-  for (let index = 0; index < 9; index += 1) {
-    if (modules[8][index] === null) set(index, 8, false);
-    if (modules[index][8] === null) set(8, index, false);
   }
-  for (let index = 0; index < 8; index += 1) {
-    set(size - 1 - index, 8, false);
-    set(8, size - 1 - index, false);
-  }
-  set(8, size - 8, true);
 
-  const dataBits = [];
-  codewords.forEach((byte) => appendBits(dataBits, byte, 8));
-  let bitIndex = 0;
-  let upward = true;
-  for (let right = size - 1; right >= 1; right -= 2) {
-    if (right === 6) right -= 1;
-    for (let step = 0; step < size; step += 1) {
-      const y = upward ? size - 1 - step : step;
-      for (let offset = 0; offset < 2; offset += 1) {
-        const x = right - offset;
-        if (modules[y][x] !== null) continue;
-        const rawBit = dataBits[bitIndex] ?? 0;
-        bitIndex += 1;
-        set(x, y, rawBit ^ ((x + y) % 2 === 0)); // QR mask pattern 0
+  for (let idx = 0; idx < 9; idx += 1) {
+    if (grid[8][idx] === null) assignCell(idx, 8, false);
+    if (grid[idx][8] === null) assignCell(8, idx, false);
+  }
+  for (let idx = 0; idx < 8; idx += 1) {
+    assignCell(dimension - 1 - idx, 8, false);
+    assignCell(8, dimension - 1 - idx, false);
+  }
+  assignCell(8, dimension - 8, true);
+
+  const serialBits = [];
+  for (const codeword of fullCodewords) {
+    pushBitSequence(serialBits, codeword, 8);
+  }
+
+  let bitPointer = 0;
+  let ascendingScan = true;
+
+  for (let rightCol = dimension - 1; rightCol >= 1; rightCol -= 2) {
+    if (rightCol === 6) rightCol -= 1;
+    for (let step = 0; step < dimension; step += 1) {
+      const row = ascendingScan ? dimension - 1 - step : step;
+      for (let pairOffset = 0; pairOffset < 2; pairOffset += 1) {
+        const col = rightCol - pairOffset;
+        if (grid[row][col] !== null) continue;
+        const bitVal = serialBits[bitPointer] ?? 0;
+        bitPointer += 1;
+        const maskedBit = bitVal ^ ((col + row) % 2 === 0 ? 1 : 0);
+        assignCell(col, row, maskedBit);
       }
     }
-    upward = !upward;
+    ascendingScan = !ascendingScan;
   }
 
-  const formatData = 0b01 << 3; // L error correction, mask 0
-  const format = ((formatData << 10) | bch(formatData << 10, 0x537)) ^ 0x5412;
-  for (let index = 0; index <= 5; index += 1) set(8, index, (format >>> index) & 1);
-  set(8, 7, (format >>> 6) & 1);
-  set(8, 8, (format >>> 7) & 1);
-  set(7, 8, (format >>> 8) & 1);
-  for (let index = 9; index < 15; index += 1) set(14 - index, 8, (format >>> index) & 1);
-  for (let index = 0; index < 8; index += 1) set(size - 1 - index, 8, (format >>> index) & 1);
-  for (let index = 8; index < 15; index += 1) set(8, size - 15 + index, (format >>> index) & 1);
+  const formatPrefix = 0b01 << 3;
+  const formatBits =
+    ((formatPrefix << 10) |
+      calculateBchRemainder(formatPrefix << 10, 0x537)) ^
+    0x5412;
 
-  return modules;
+  for (let idx = 0; idx <= 5; idx += 1) {
+    assignCell(8, idx, (formatBits >>> idx) & 1);
+  }
+  assignCell(8, 7, (formatBits >>> 6) & 1);
+  assignCell(8, 8, (formatBits >>> 7) & 1);
+  assignCell(7, 8, (formatBits >>> 8) & 1);
+  for (let idx = 9; idx < 15; idx += 1) {
+    assignCell(14 - idx, 8, (formatBits >>> idx) & 1);
+  }
+  for (let idx = 0; idx < 8; idx += 1) {
+    assignCell(dimension - 1 - idx, 8, (formatBits >>> idx) & 1);
+  }
+  for (let idx = 8; idx < 15; idx += 1) {
+    assignCell(8, dimension - 15 + idx, (formatBits >>> idx) & 1);
+  }
+
+  return grid;
+}
+
+export function buildQrMatrixGrid(targetUri) {
+  const { version, totalBytes, payloadBytes, payloadCodewords } =
+    encodePayloadStream(targetUri);
+  const parityBytes = computeParityBytes(
+    payloadCodewords,
+    totalBytes - payloadBytes,
+  );
+  return assembleModuleGrid(version, [...payloadCodewords, ...parityBytes]);
+}
+
+export function drawMatrixGridToCanvas(
+  canvasElement,
+  matrixGrid,
+  {
+    pixelScale = 8,
+    quietZone = 4,
+    darkModuleHex = "#0A192F",
+    lightSurfaceHex = "#FFFFFF",
+  } = {},
+) {
+  if (!canvasElement || !Array.isArray(matrixGrid)) {
+    throw new Error("A valid HTMLCanvasElement and matrix grid are required.");
+  }
+
+  const moduleCount = matrixGrid.length;
+  const totalDimensionPx = (moduleCount + quietZone * 2) * pixelScale;
+
+  canvasElement.width = totalDimensionPx;
+  canvasElement.height = totalDimensionPx;
+
+  const ctx2d = canvasElement.getContext("2d");
+  ctx2d.fillStyle = lightSurfaceHex;
+  ctx2d.fillRect(0, 0, totalDimensionPx, totalDimensionPx);
+
+  ctx2d.fillStyle = darkModuleHex;
+  for (let rowIdx = 0; rowIdx < moduleCount; rowIdx += 1) {
+    const rowCells = matrixGrid[rowIdx];
+    for (let colIdx = 0; colIdx < moduleCount; colIdx += 1) {
+      if (rowCells[colIdx]) {
+        ctx2d.fillRect(
+          (colIdx + quietZone) * pixelScale,
+          (rowIdx + quietZone) * pixelScale,
+          pixelScale,
+          pixelScale,
+        );
+      }
+    }
+  }
+
+  return {
+    dimensionPx: totalDimensionPx,
+    moduleCount,
+  };
+}
+
+export function paintQrOntoCanvas(
+  canvasElement,
+  targetUri,
+  options = {},
+) {
+  const matrixGrid = buildQrMatrixGrid(targetUri);
+  return drawMatrixGridToCanvas(canvasElement, matrixGrid, options);
 }
 
 export function makeQrDataUrl(text, scale = 8, margin = 4) {
-  const { version, data, dataCodewords, totalCodewords } = makeData(text);
-  const ecc = errorCorrection(data, totalCodewords - dataCodewords);
-  const matrix = createMatrix(version, [...data, ...ecc]);
-  const size = matrix.length;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = (size + margin * 2) * scale;
-  const context = canvas.getContext("2d");
-  context.fillStyle = "#fff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#111827";
-  matrix.forEach((row, y) => row.forEach((dark, x) => {
-    if (dark) context.fillRect((x + margin) * scale, (y + margin) * scale, scale, scale);
-  }));
-  return canvas.toDataURL("image/png");
+  const offscreenCanvas = document.createElement("canvas");
+  paintQrOntoCanvas(offscreenCanvas, text, {
+    pixelScale: scale,
+    quietZone: margin,
+  });
+  return offscreenCanvas.toDataURL("image/png");
 }
