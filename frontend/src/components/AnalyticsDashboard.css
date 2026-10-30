@@ -1,35 +1,58 @@
 /*
- * Institutional hybrid: carbon command header + stone canvas + dense bento.
+ * GBM corporate branding (60-30-10): gray canvas + white cards (60),
+ * navy command header and structural blocks (30), cyan interactive accents (10).
  * Variables are shared with IntelligenceDashboard.css.
  */
 .analytics-gate,
 .analytics-shell {
-  --analytics-bg: #efeee9;
-  --analytics-surface: #fcfcfa;
-  --analytics-surface-muted: #f4f3ee;
-  --analytics-border: #dcdad3;
-  --analytics-text: #1f2328;
-  --analytics-text-muted: #5b6169;
-  --analytics-accent: #1d4ed8;
-  --analytics-danger: #c81e1e;
-  --analytics-warning: #b45309;
-  --analytics-success: #15803d;
-  --analytics-neutral: #374151;
-  --analytics-carbon: #16181d;
-  --analytics-carbon-text: #f3f4f6;
-  --analytics-carbon-muted: #9ca3af;
-  --analytics-carbon-line: #2b2f37;
-  --analytics-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
-  --analytics-radius-panel: 10px;
-  --analytics-radius-sub: 8px;
-  --analytics-radius-tag: 5px;
+  /* Official GBM palette */
+  --gbm-navy: #0A192F;
+  --gbm-cyan: #0072CE;
+  --gbm-light: #FFFFFF;
+  --gbm-gray: #F4F6F9;
+  --gbm-charcoal: #1C2530;
+
+  /* GBM functional colors */
+  --gbm-green: #10B981;
+  --gbm-amber: #F59E0B;
+  --gbm-red: #EF4444;
+
+  /* Derived tints (mixed only from the official tokens above) */
+  --gbm-border: color-mix(in srgb, var(--gbm-navy) 10%, var(--gbm-gray));
+  --gbm-border-strong: color-mix(in srgb, var(--gbm-navy) 20%, var(--gbm-gray));
+  --gbm-charcoal-muted: color-mix(in srgb, var(--gbm-charcoal) 80%, var(--gbm-light));
+  --gbm-cyan-hover: color-mix(in srgb, var(--gbm-cyan) 82%, var(--gbm-navy));
+  --gbm-cyan-tint: color-mix(in srgb, var(--gbm-cyan) 8%, var(--gbm-light));
+  /* Text-safe "ink" variants of the functional colors (WCAG AAA on white) */
+  --gbm-red-ink: color-mix(in srgb, var(--gbm-red) 55%, var(--gbm-charcoal));
+  --gbm-amber-ink: color-mix(in srgb, var(--gbm-amber) 35%, var(--gbm-charcoal));
+  --gbm-green-ink: color-mix(in srgb, var(--gbm-green) 40%, var(--gbm-charcoal));
+  /* Soft surfaces for status tags */
+  --gbm-red-tint: color-mix(in srgb, var(--gbm-red) 8%, var(--gbm-light));
+  --gbm-red-line: color-mix(in srgb, var(--gbm-red) 30%, var(--gbm-light));
+  --gbm-amber-tint: color-mix(in srgb, var(--gbm-amber) 10%, var(--gbm-light));
+  --gbm-amber-line: color-mix(in srgb, var(--gbm-amber) 35%, var(--gbm-light));
+  --gbm-green-tint: color-mix(in srgb, var(--gbm-green) 9%, var(--gbm-light));
+  --gbm-green-line: color-mix(in srgb, var(--gbm-green) 32%, var(--gbm-light));
+  --gbm-navy-tint: color-mix(in srgb, var(--gbm-navy) 6%, var(--gbm-light));
+  --gbm-navy-tint-line: color-mix(in srgb, var(--gbm-navy) 18%, var(--gbm-light));
+
+  --gbm-shadow: 0 1px 3px rgba(10, 25, 47, 0.06), 0 1px 2px rgba(10, 25, 47, 0.04);
+  /* Navy header derivatives */
+  --gbm-on-navy-muted: color-mix(in srgb, var(--gbm-light) 70%, var(--gbm-navy));
+  --gbm-navy-line: color-mix(in srgb, var(--gbm-light) 14%, var(--gbm-navy));
+  --gbm-navy-hover: color-mix(in srgb, var(--gbm-light) 8%, var(--gbm-navy));
+
+  --gbm-radius-panel: 10px;
+  --gbm-radius-sub: 8px;
+  --gbm-radius-tag: 5px;
 }
 
 .analytics-gate,
 .analytics-shell {
   min-height: 100vh;
-  background: var(--analytics-bg);
-  color: var(--analytics-text);
+  background: var(--gbm-gray);
+  color: var(--gbm-charcoal);
 }
 
 /* ---------- PIN gate ---------- */
@@ -42,10 +65,10 @@
 .analytics-gate-card {
   width: min(100%, 440px);
   padding: 48px;
-  border: 1px solid var(--analytics-border);
-  border-radius: var(--analytics-radius-panel);
-  background: var(--analytics-surface);
-  box-shadow: var(--analytics-shadow);
+  border: 1px solid var(--gbm-border);
+  border-radius: var(--gbm-radius-panel);
+  background: var(--gbm-light);
+  box-shadow: var(--gbm-shadow);
 }
 
 .analytics-mark {
@@ -54,16 +77,16 @@
   width: 52px;
   height: 52px;
   margin-bottom: 26px;
-  border-radius: var(--analytics-radius-sub);
-  background: var(--analytics-carbon);
-  color: var(--analytics-carbon-text);
+  border-radius: var(--gbm-radius-sub);
+  background: var(--gbm-navy);
+  color: var(--gbm-light);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .analytics-eyebrow {
   margin: 0 0 8px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -72,20 +95,20 @@
 
 .analytics-gate h1 {
   margin: 0;
-  color: var(--analytics-text);
+  color: var(--gbm-navy);
   font-size: clamp(30px, 5vw, 42px);
   letter-spacing: -0.03em;
 }
 
 .analytics-gate-copy {
   margin: 12px 0 30px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
 }
 
 .analytics-gate label {
   display: block;
   margin-bottom: 8px;
-  color: var(--analytics-text);
+  color: var(--gbm-charcoal);
   font-size: 13px;
   font-weight: 700;
 }
@@ -93,28 +116,32 @@
 .analytics-gate input {
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid var(--analytics-border);
-  border-radius: var(--analytics-radius-sub);
-  background: #fff;
-  color: var(--analytics-text);
+  border: 1px solid var(--gbm-border);
+  border-radius: var(--gbm-radius-sub);
+  background: var(--gbm-light);
+  color: var(--gbm-charcoal);
   font-size: 20px;
   letter-spacing: 0.2em;
 }
 
 .analytics-gate input::placeholder {
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
+}
+
+.analytics-gate input:focus {
+  border-color: var(--gbm-cyan);
 }
 
 .analytics-gate input:focus-visible,
 .analytics-primary-button:focus-visible,
 .analytics-command-actions button:focus-visible,
 .analytics-tab-btn:focus-visible {
-  outline: 2px solid var(--analytics-accent);
+  outline: 2px solid var(--gbm-cyan);
   outline-offset: 2px;
 }
 
 .analytics-form-error {
-  color: var(--analytics-danger);
+  color: var(--gbm-red-ink);
   font-size: 13px;
 }
 
@@ -123,21 +150,21 @@
   margin-top: 16px;
   padding: 14px;
   border: 0;
-  border-radius: var(--analytics-radius-sub);
-  background: var(--analytics-carbon);
-  color: var(--analytics-carbon-text);
+  border-radius: var(--gbm-radius-sub);
+  background: var(--gbm-cyan);
+  color: var(--gbm-light);
   font-weight: 700;
   cursor: pointer;
 }
 
 .analytics-primary-button:hover {
-  background: #262a32;
+  background: var(--gbm-cyan-hover);
 }
 
 .analytics-text-link {
   display: block;
   margin-top: 24px;
-  color: var(--analytics-accent);
+  color: var(--gbm-cyan);
   font-size: 13px;
   text-align: center;
 }
@@ -148,9 +175,9 @@
 }
 
 .analytics-command {
-  background: var(--analytics-carbon);
-  color: var(--analytics-carbon-text);
-  border-bottom: 1px solid var(--analytics-carbon-line);
+  background: var(--gbm-navy);
+  color: var(--gbm-light);
+  border-bottom: 1px solid var(--gbm-navy-line);
 }
 
 .analytics-command-inner {
@@ -173,12 +200,12 @@
 
 .analytics-command .analytics-eyebrow {
   margin-bottom: 6px;
-  color: var(--analytics-carbon-muted);
+  color: var(--gbm-on-navy-muted);
 }
 
 .analytics-command h1 {
   margin: 0;
-  color: var(--analytics-carbon-text);
+  color: var(--gbm-light);
   font-size: clamp(24px, 3.4vw, 32px);
   letter-spacing: -0.02em;
 }
@@ -200,10 +227,10 @@
 
 .analytics-command-actions button {
   padding: 7px 11px;
-  border: 1px solid var(--analytics-carbon-line);
+  border: 1px solid var(--gbm-navy-line);
   border-radius: 6px;
   background: transparent;
-  color: #e5e7eb;
+  color: var(--gbm-light);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -211,13 +238,25 @@
 }
 
 .analytics-command-actions button:hover {
-  background: #22262d;
-  border-color: #3d424c;
+  background: var(--gbm-navy-hover);
+  border-color: var(--gbm-on-navy-muted);
+}
+
+/* Primary export actions (CSV / JSON) use the GBM cyan accent */
+.analytics-command-actions button[aria-label^="Exportar"] {
+  background: var(--gbm-cyan);
+  border-color: var(--gbm-cyan);
+  color: var(--gbm-light);
+}
+
+.analytics-command-actions button[aria-label^="Exportar"]:hover {
+  background: var(--gbm-cyan-hover);
+  border-color: var(--gbm-cyan-hover);
 }
 
 .analytics-command-actions button.is-lock {
-  border-color: #3d424c;
-  color: var(--analytics-carbon-muted);
+  border-color: var(--gbm-navy-line);
+  color: var(--gbm-on-navy-muted);
 }
 
 /* Integrated tab bar (bottom-border) */
@@ -237,7 +276,7 @@
   border-bottom: 2px solid transparent;
   border-radius: 6px 6px 0 0;
   background: transparent;
-  color: var(--analytics-carbon-muted);
+  color: var(--gbm-on-navy-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -249,13 +288,13 @@
 }
 
 .analytics-tab-btn:hover {
-  background: #1e2128;
-  color: var(--analytics-carbon-text);
+  background: var(--gbm-navy-hover);
+  color: var(--gbm-light);
 }
 
 .analytics-tab-btn.is-active {
-  border-bottom-color: #7aa2ff;
-  color: var(--analytics-carbon-text);
+  border-bottom-color: var(--gbm-cyan);
+  color: var(--gbm-light);
 }
 
 /* 7px status dot + source badge (dark header) */
@@ -274,7 +313,7 @@
   gap: 8px;
   padding: 6px 11px;
   border: 1px solid transparent;
-  border-radius: var(--analytics-radius-tag);
+  border-radius: var(--gbm-radius-tag);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -282,15 +321,15 @@
 }
 
 .analytics-source-badge.is-live {
-  background: rgba(74, 190, 120, 0.1);
-  border-color: rgba(74, 190, 120, 0.35);
-  color: #7fd6a1;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--gbm-green);
 }
 
 .analytics-source-badge.is-simulated {
-  background: rgba(233, 184, 114, 0.1);
-  border-color: rgba(233, 184, 114, 0.35);
-  color: #e9b872;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--gbm-amber);
 }
 
 /* ---------- Body ---------- */
@@ -304,12 +343,12 @@
   display: flex;
   gap: 14px;
   margin: 0 0 16px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
 }
 
 .analytics-toolbar-warning {
-  color: var(--analytics-warning);
+  color: var(--gbm-amber-ink);
 }
 
 /* ---------- Unified metric strip ---------- */
@@ -317,10 +356,10 @@
   display: grid;
   grid-template-columns: 1.3fr 1fr 1fr 1fr;
   margin-bottom: 16px;
-  border: 1px solid var(--analytics-border);
-  border-radius: var(--analytics-radius-panel);
-  background: var(--analytics-surface);
-  box-shadow: var(--analytics-shadow);
+  border: 1px solid var(--gbm-border);
+  border-radius: var(--gbm-radius-panel);
+  background: var(--gbm-light);
+  box-shadow: var(--gbm-shadow);
   overflow: hidden;
 }
 
@@ -333,17 +372,17 @@
 }
 
 .analytics-metric + .analytics-metric {
-  border-left: 1px solid var(--analytics-border);
+  border-left: 1px solid var(--gbm-border);
 }
 
 .analytics-metric-label {
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .analytics-metric-value {
-  color: var(--analytics-text);
+  color: var(--gbm-charcoal);
   font-size: 28px;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -351,7 +390,7 @@
 }
 
 .analytics-metric.is-primary {
-  background: var(--analytics-surface-muted);
+  background: var(--gbm-gray);
 }
 
 .analytics-metric.is-primary .analytics-metric-value {
@@ -359,14 +398,14 @@
 }
 
 .analytics-metric small {
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .analytics-metric-unit {
   margin-left: 2px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 16px;
   font-weight: 600;
 }
@@ -374,10 +413,10 @@
 .analytics-metric-scale {
   margin-left: 8px;
   padding: 2px 7px;
-  border: 1px solid var(--analytics-border);
-  border-radius: var(--analytics-radius-tag);
-  background: var(--analytics-surface-muted);
-  color: var(--analytics-text-muted);
+  border: 1px solid var(--gbm-border);
+  border-radius: var(--gbm-radius-tag);
+  background: var(--gbm-gray);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
   font-weight: 700;
   vertical-align: middle;
@@ -387,17 +426,17 @@
   height: 4px;
   overflow: hidden;
   border-radius: 2px;
-  background: var(--analytics-border);
+  background: var(--gbm-border);
 }
 
 .analytics-mini-track span {
   display: block;
   height: 100%;
-  background: var(--analytics-success);
+  background: var(--gbm-green);
 }
 
 .analytics-mini-track.is-danger span {
-  background: var(--analytics-danger);
+  background: var(--gbm-red);
 }
 
 /* ---------- Asymmetric bento ---------- */
@@ -413,10 +452,10 @@
 
 .analytics-panel {
   padding: 22px;
-  border: 1px solid var(--analytics-border);
-  border-radius: var(--analytics-radius-panel);
-  background: var(--analytics-surface);
-  box-shadow: var(--analytics-shadow);
+  border: 1px solid var(--gbm-border);
+  border-radius: var(--gbm-radius-panel);
+  background: var(--gbm-light);
+  box-shadow: var(--gbm-shadow);
 }
 
 .analytics-panel-heading {
@@ -429,13 +468,13 @@
 
 .analytics-panel h2 {
   margin: 0;
-  color: var(--analytics-text);
+  color: var(--gbm-navy);
   font-size: 18px;
   letter-spacing: -0.02em;
 }
 
 .analytics-panel-total {
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -447,7 +486,7 @@
   height: 12px;
   overflow: hidden;
   border-radius: 4px;
-  background: var(--analytics-border);
+  background: var(--gbm-border);
   gap: 2px;
 }
 
@@ -470,7 +509,7 @@
   gap: 14px;
   align-items: center;
   padding: 11px 0;
-  border-top: 1px solid var(--analytics-border);
+  border-top: 1px solid var(--gbm-border);
   font-variant-numeric: tabular-nums;
 }
 
@@ -491,7 +530,7 @@
 
 .analytics-ledger-name small {
   display: block;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 11px;
 }
 
@@ -508,7 +547,7 @@
 }
 
 .analytics-ledger-count small {
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-weight: 500;
 }
 
@@ -522,28 +561,28 @@
   display: inline-block;
   padding: 3px 8px;
   border: 1px solid transparent;
-  border-radius: var(--analytics-radius-tag);
+  border-radius: var(--gbm-radius-tag);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .analytics-tag.is-danger {
-  background: #f9ecea;
-  border-color: #e8c9c5;
-  color: var(--analytics-danger);
+  background: var(--gbm-red-tint);
+  border-color: var(--gbm-red-line);
+  color: var(--gbm-red-ink);
 }
 
 .analytics-tag.is-warning {
-  background: #f8efe0;
-  border-color: #e3cfa6;
-  color: var(--analytics-warning);
+  background: var(--gbm-amber-tint);
+  border-color: var(--gbm-amber-line);
+  color: var(--gbm-amber-ink);
 }
 
 .analytics-tag.is-success {
-  background: #e8f1ea;
-  border-color: #bfd8c6;
-  color: var(--analytics-success);
+  background: var(--gbm-green-tint);
+  border-color: var(--gbm-green-line);
+  color: var(--gbm-green-ink);
 }
 
 /* Tables and competency matrix */
@@ -561,7 +600,7 @@
 
 .analytics-table th {
   padding: 0 10px 10px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   text-align: left;
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -570,19 +609,19 @@
 
 .analytics-table td {
   padding: 12px 10px;
-  border-top: 1px solid var(--analytics-border);
-  color: var(--analytics-text);
+  border-top: 1px solid var(--gbm-border);
+  color: var(--gbm-charcoal);
 }
 
 .analytics-zones-panel .analytics-table td:first-child span {
   display: block;
   margin-top: 2px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 11px;
 }
 
 .analytics-code {
-  color: var(--analytics-accent);
+  color: var(--gbm-cyan);
   font-size: 13px;
 }
 
@@ -596,7 +635,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 3px;
-  background: var(--analytics-border);
+  background: var(--gbm-border);
 }
 
 .analytics-progress span,
@@ -604,19 +643,19 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--analytics-accent);
+  background: var(--gbm-cyan);
 }
 
 .analytics-progress span.is-danger {
-  background: var(--analytics-danger);
+  background: var(--gbm-red);
 }
 
 .analytics-progress span.is-warning {
-  background: var(--analytics-warning);
+  background: var(--gbm-amber);
 }
 
 .analytics-progress span.is-success {
-  background: var(--analytics-success);
+  background: var(--gbm-green);
 }
 
 /* Funnel */
@@ -633,20 +672,20 @@
 }
 
 .analytics-funnel-row b {
-  color: var(--analytics-text);
+  color: var(--gbm-charcoal);
   font-variant-numeric: tabular-nums;
 }
 
 .analytics-funnel-row small {
   display: block;
   margin-top: 4px;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .analytics-funnel-row:last-child .analytics-funnel-track span {
-  background: var(--analytics-danger);
+  background: var(--gbm-red);
 }
 
 /* Actions */
@@ -662,7 +701,7 @@
   display: flex;
   gap: 13px;
   padding: 13px 0;
-  border-top: 1px solid var(--analytics-border);
+  border-top: 1px solid var(--gbm-border);
 }
 
 .analytics-action-list li:first-child {
@@ -676,28 +715,28 @@
   width: 28px;
   height: 28px;
   flex: none;
-  border-radius: var(--analytics-radius-tag);
-  background: var(--analytics-carbon);
-  color: var(--analytics-carbon-text);
+  border-radius: var(--gbm-radius-tag);
+  background: var(--gbm-navy);
+  color: var(--gbm-light);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .analytics-action-list strong {
-  color: var(--analytics-text);
+  color: var(--gbm-charcoal);
   font-size: 13px;
 }
 
 .analytics-action-list p {
   margin: 3px 0 0;
-  color: var(--analytics-text-muted);
+  color: var(--gbm-charcoal-muted);
   font-size: 12px;
 }
 
 .analytics-map {
   height: 340px;
-  border-radius: var(--analytics-radius-sub);
+  border-radius: var(--gbm-radius-sub);
 }
 
 @media (max-width: 1100px) {
@@ -710,7 +749,7 @@
   }
 
   .analytics-metric:nth-child(n + 3) {
-    border-top: 1px solid var(--analytics-border);
+    border-top: 1px solid var(--gbm-border);
   }
 
   .analytics-bento {
@@ -736,7 +775,7 @@
 
   .analytics-metric + .analytics-metric {
     border-left: 0;
-    border-top: 1px solid var(--analytics-border);
+    border-top: 1px solid var(--gbm-border);
   }
 
   .analytics-metric.is-primary .analytics-metric-value {

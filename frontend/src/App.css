@@ -2212,3 +2212,163 @@ body {
     transform: rotate(24deg);
   }
 }
+
+
+/* ===== US-01 GBM Corporate Welcome & Kiosk Entry (360x640 / >=48dp) ===== */
+.us01-landing-shell {
+  --gbm-navy: #0A192F;
+  --gbm-cyan: #0072CE;
+  --gbm-light: #FFFFFF;
+  --gbm-gray: #F4F6F9;
+  --gbm-charcoal: #1C2530;
+}
+
+.nina-app-shell .us01-brand-header {
+  background: #0A192F;
+  color: #FFFFFF;
+  min-height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 2px solid #0072CE;
+}
+
+.us01-brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font: 700 20px Fredoka, sans-serif;
+  letter-spacing: 0.1em;
+  color: #FFFFFF;
+}
+
+.us01-brand-wordmark b {
+  color: #0072CE;
+  background: #FFFFFF;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-left: 8px;
+  letter-spacing: 0.08em;
+}
+
+.us01-badge-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.us01-origin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font: 700 11px/1 Nunito, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.12);
+  color: #F4F6F9;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.us01-origin-pill.is-kiosk {
+  background: rgba(0, 114, 206, 0.28);
+  border-color: #0072CE;
+  color: #FFFFFF;
+}
+
+.us01-origin-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+}
+
+.us01-origin-pill.is-community .us01-origin-dot {
+  background: #0072CE;
+}
+
+.nina-header .us01-assisted-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #0072CE;
+  color: #FFFFFF;
+  font: 800 11px/1 Nunito, system-ui, sans-serif;
+  font-style: normal;
+  letter-spacing: 0.03em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.us01-welcome-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  width: 100%;
+}
+
+.us01-banner-card {
+  background: #F4F6F9;
+  border: 1px solid rgba(10, 25, 47, 0.1);
+  border-left: 4px solid #0072CE;
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .nina-app-shell:not([data-theme="light"]) .us01-banner-card {
+    background: rgba(10, 25, 47, 0.55);
+    border-color: rgba(0, 114, 206, 0.45);
+    border-left-color: #0072CE;
+  }
+}
+
+.us01-banner-kicker {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #0A192F;
+  color: #FFFFFF;
+  font: 700 11px/1.3 Nunito, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.us01-banner-title {
+  margin: 4px 0;
+}
+
+.us01-banner-subtitle {
+  margin: 0;
+}
+
+.us01-audio-row {
+  display: flex;
+  justify-content: center;
+}
+
+.nina-app-shell .us01-audio-trigger {
+  min-width: 56px;
+  min-height: 56px;
+  border-color: #0072CE;
+}
+
+.us01-cta-spacer {
+  flex: 1;
+  min-height: 4px;
+}
+
+.nina-app-shell .us01-start-cta {
+  min-height: 56px;
+  background: #0072CE;
+  color: #FFFFFF;
+}

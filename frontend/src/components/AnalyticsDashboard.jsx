@@ -42,7 +42,7 @@ const STATUS_META = {
     hint: "Nivel crítico",
     tag: "Prioridad",
     tone: "danger",
-    color: "#c81e1e",
+    color: "#EF4444",
     priority: "Prioridad alta",
   },
   YELLOW: {
@@ -51,7 +51,7 @@ const STATUS_META = {
     hint: "En desarrollo",
     tag: "En refuerzo",
     tone: "warning",
-    color: "#b45309",
+    color: "#F59E0B",
     priority: "Refuerzo",
   },
   GREEN: {
@@ -60,7 +60,7 @@ const STATUS_META = {
     hint: "Competente",
     tag: "Autónomo",
     tone: "success",
-    color: "#15803d",
+    color: "#10B981",
     priority: "Seguimiento",
   },
 };
