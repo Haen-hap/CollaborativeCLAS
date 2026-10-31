@@ -3,7 +3,7 @@
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css"></head><body><div id="app">
-<header>GBM<b>CCLAS</b><i id="asst">Modo asistido</i></header>
+<header>GBM<b>CCLAS</b><i id="asst">Modo asistido</i><nav id="language-selector" role="group" aria-label="Idioma"><button type="button" data-language="es" aria-label="Cambiar idioma a Español" aria-pressed="true" onclick="changeLanguage('es')">ES</button><button type="button" data-language="en" aria-label="Cambiar idioma a Inglés" aria-pressed="false" onclick="changeLanguage('en')">EN</button></nav></header>
 <div class="gems" id="gems"></div>
 <div id="scene"><div class="layer" id="far"></div><div class="layer" id="near"></div><div id="ground"></div><div id="bubble"></div>
 <svg id="hero" viewBox="0 0 100 128" data-pose="idle" data-face="smile" data-look=""><defs><linearGradient id="gh" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#5EDBFF"/><stop offset="1" stop-color="#00A3E0"/></linearGradient>
@@ -35,8 +35,8 @@
 <circle cx="42" cy="54" r="5" fill="url(#gh)"/><circle cx="64" cy="46" r="14" fill="#fff"/>
 <g class="look"><circle cx="69" cy="47" r="5.4" fill="#0B2545" stroke="none"/><circle cx="70.8" cy="45" r="1.7" fill="#fff" stroke="none"/></g>
 <ellipse cx="68" cy="63" rx="5" ry="3" fill="#8EE8FF" opacity=".6" stroke="none"/><path d="M66 62q5 5 10 0" fill="none" stroke-width="2.6"/></g></g></svg></div>
-<div id="panel"></div><div id="modal"><div><span>¿Sigues ahí, amigo?</span><button class="btn" onclick="poke()">Sí, sigo aquí</button></div></div></div>
+<div id="panel"></div><div id="modal"><div><span id="modal-message">¿Sigues ahí, amigo?</span><button class="btn" id="modal-button" onclick="poke()">Sí, sigo aquí</button></div></div></div>
 
-<script src="js/config.js"></script><script src="js/icons.js"></script><script src="js/audio.js"></script><script src="js/data.js"></script><script src="js/api.js"></script><script src="js/game.js"></script>
+<script src="js/config.js"></script><script src="js/i18n.js"></script><script src="js/icons.js"></script><script src="js/audio.js"></script><script src="js/data.js"></script><script src="js/api.js"></script><script src="js/game.js"></script>
 <script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))</script>
 </body></html>
