@@ -12,7 +12,13 @@
   <body>
     <div id="root"></div>
     <div id="app">
-      <header>GBM<b>CCLAS</b><i id="asst">Modo asistido</i></header>
+      <header>
+        GBM<b>CCLAS</b><i id="asst">Modo asistido</i>
+        <div id="language-selector" role="group">
+          <button type="button" data-language="es" onclick="changeLanguage('es')">ES</button>
+          <button type="button" data-language="en" onclick="changeLanguage('en')">EN</button>
+        </div>
+      </header>
       <div class="gems" id="gems"></div>
       <div id="scene">
         <div class="layer" id="far"></div>
@@ -50,8 +56,9 @@
 <ellipse cx="68" cy="63" rx="5" ry="3" fill="#8EE8FF" opacity=".6" stroke="none"/><path d="M66 62q5 5 10 0" fill="none" stroke-width="2.6"/></g></g></svg>
       </div>
       <div id="panel"></div>
-      <div id="modal"><div><span>¿Sigues ahí, amigo?</span><button class="btn" onclick="poke()">Sí, sigo aquí</button></div></div>
+      <div id="modal"><div><span id="modal-message">¿Sigues ahí, amigo?</span><button id="modal-button" class="btn" onclick="poke()">Sí, sigo aquí</button></div></div>
     </div>
+    <script src="/js/i18n.js"></script>
     <script>
       (function () {
         var path = window.location.pathname || "/";
