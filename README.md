@@ -49,3 +49,10 @@ window.CCLAS_API = "http://localhost:8000";
 - The `/datos` dashboard (traffic-light map, action plan) from your React project has not been ported; the API is available.
 - Actual IoT endpoint for the Smart Oasis Kiosk (currently a 4-digit code is provided).
 - I have not tested the backend against a database here; run `pytest` on your machine.
+
+---
+
+## 👥 Engineering & Architecture Team
+
+ Docker Orchestration, Backend Architecture (FastAPI & PostgreSQL), i18n Engine & State Recovery.
+Frontend PWA Layout, Visual Identity & UI Design.
