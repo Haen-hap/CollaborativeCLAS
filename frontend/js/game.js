@@ -1,56 +1,331 @@
-// ---- state
-const Q=new URLSearchParams(location.search);let S,steps,idx,idle,t0,busy=false;
-const kq=Q.get("kiosk"),known=/^PTYK00[1-3]$/.test(kq||""),kiosk=known?kq:"DIRECT_WEB",origin=known?"KIOSK":"UNKNOWN",assisted=Q.get("assisted")=="1";
-if(assisted)$("#asst").style.display="block";
+// ---- state and route
+const Q = new URLSearchParams(location.search);
+let S, steps, idx = 0, idle = {}, t0 = Date.now();
+let currentView = "home", currentGemStage = 0, resultPresentation = null;
+const kq = Q.get("kiosk"), known = /^PTYK00[1-3]$/.test(kq || "");
+const kiosk = known ? kq : "DIRECT_WEB", origin = known ? "KIOSK" : "UNKNOWN";
+const assisted = Q.get("assisted") === "1";
+const ACTIVE_SESSION_KEY = "cclas_active_session";
+const P_ = $("#panel");
+if (assisted) $("#asst").style.display = "block";
+
 // ---- scene
-const bld=(w,h,c,x)=>`<svg style="left:${x}px" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${c}"/><rect x="-4" y="0" width="${w+8}" height="9" fill="#2F4A72"/>${Array.from({length:Math.floor(h/26)*Math.floor(w/26)},(_,i)=>`<rect x="${10+(i%Math.floor(w/26))*26}" y="${22+Math.floor(i/Math.floor(w/26))*26}" width="13" height="13" rx="3" fill="#fff" opacity=".28"/>`).join("")}</svg>`;
-let fx="",nx="";for(let i=0;i<14;i++){fx+=`<svg style="left:${i*260+20}px;bottom:34px" width="200" height="130" viewBox="0 0 200 130"><path d="M0 130L100 20L200 130z" fill="#fff" opacity=".35"/></svg>`;nx+=bld(80+(i*37%50),90+(i*53%80),i%2?"#46648C":"#3C5983",i*190+160)+(i%3==0?`<svg style="left:${i*190+60}px" width="40" height="80" viewBox="0 0 40 80"><rect x="18" y="40" width="5" height="40" fill="#46648C"/><circle cx="20" cy="30" r="22" fill="#6E8FB8"/></svg>`:"")}
-$("#far").innerHTML=fx;$("#near").innerHTML=nx;
-let walked=0;const walk=()=>{walked++;$("#hero").classList.add("walk");$("#near").style.transform=`translateX(${-walked*150}px)`;$("#far").style.transform=`translateX(${-walked*60}px)`;setTimeout(()=>$("#hero").classList.remove("walk"),900)};
-const say2=t=>{$("#bubble").textContent=t};
-const burst=()=>{for(let i=0;i<18;i++){const s=document.createElement("i");s.className="star";s.style.left="50%";s.style.top="50%";s.style.setProperty("--x",(Math.random()*300-150)+"px");s.style.setProperty("--y",(Math.random()*-200)+"px");$("#scene").appendChild(s);setTimeout(()=>s.remove(),1700)}};
-const tier=r=>r>=.75?"g":r>=.45?"y":"r";
-const gems=n=>{$("#gems").innerHTML=STAGES.map((_,i)=>{let c="";if(i<n||(i==n&&S&&i>0&&S.tot[i]>0))c=(i&&S&&S.tot[i])?tier(S.sc["c"+i]/S.tot[i]):"on";return `<svg viewBox="0 0 24 24" class="${c}"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>`}).join("")};
-// ---- inactivity / reset
-const poke=()=>{$("#modal").style.display="none";clearTimeout(idle.a);clearTimeout(idle.b);if(steps&&S&&!S.done){idle.a=setTimeout(()=>{$("#modal").style.display="grid";tone(520,.4)},45000);idle.b=setTimeout(()=>{S.status="ABANDONED";save();home()},90000)}};
-idle={};["pointerdown","keydown"].forEach(e=>addEventListener(e,()=>{if(S&&!S.done&&$("#modal").style.display!="grid")poke()}));
-const save=()=>{const o=S.out();try{const a=JSON.parse(localStorage.getItem("cclas_sessions")||"[]"),i=a.findIndex(x=>x.session_id==o.session_id);i<0?a.push(o):a[i]=o;localStorage.setItem("cclas_sessions",JSON.stringify(a))}catch(e){}sendSession(o)};
-// ---- flow
-const fresh=()=>{const sc={c1:0,c2:0,c3:0,c4:0};busy=false;S={id:"SES-"+Date.now().toString(36)+Math.random().toString(36).slice(2,8),d:{age:null,work:null,school:null,zone:null},sc,tot:[0,0,0,0,0],status:"IN_PROGRESS",done:false,out(){const q={c1:Math.min(2,Math.max(0,Math.round(sc.c1*2/3))),c2:Math.min(2,Math.max(0,Math.round(sc.c2*2/3))),c3:Math.min(2,Math.max(0,Math.round(sc.c3*2/3))),c4:Math.min(3,Math.max(0,Math.round(sc.c4*3/4)))},t=q.c1+q.c2+q.c3+q.c4,rw=S.reward||{};return{session_id:S.id,kiosk_id:kiosk,origin,assisted_mode:assisted,age_range:S.d.age||null,work_status:S.d.work||null,schooling_level:S.d.school||null,zone_code:S.d.zone||"DECLINED",c1_visual_signs_score:q.c1,c2_sentence_comprehension_score:q.c2,c3_mobile_icons_score:q.c3,c4_cybersecurity_score:q.c4,total_literacy_score:t,internal_zone_classification:t<=3?"RED":t<=6?"YELLOW":"GREEN",completion_status:S.status=="COMPLETED"?"COMPLETED":"ABANDONED",last_step:String("step_"+Math.min(idx,steps?steps.length:idx)).slice(0,15),duration_seconds:Math.min(7200,Math.max(0,Math.round((Date.now()-t0)/1000))),reward_issued:!!rw.issued,iot_trigger_type:rw.type||"NONE",repeat_device:!!rw.repeat}}};
- steps=[{k:"age",stage:0},{k:"work",stage:0},{k:"school",stage:0},{k:"zone",stage:0},
- ...pick(SIGNS,3).map(s=>({k:"sign",stage:1,s,o:sh([s,...pick(SIGNS.filter(x=>x!=s),2)])})),
- ...pick(SENT,3).map(s=>({k:"sent",stage:2,s})),
- ...pick(ICONS,3).map(t=>({k:"icon",stage:3,t,o:sh(pick(ICONS,4).includes(t)?pick(ICONS,4):[t,...pick(ICONS.filter(x=>x!=t),3)])})),
- ...pick(SCEN,4).map(s=>({k:"swipe",stage:4,s}))];
- steps.forEach(s=>{if(s.k=="icon"&&!s.o.includes(s.t))s.o[0]=s.t;if(s.k=="icon")s.o=sh(s.o)});idx=0;t0=Date.now()};
-const P_=$("#panel"),show=h=>{if(P_){P_.innerHTML=`<div class="fade" style="display:contents">${h}</div>`;P_.scrollTop=0}};
-const home=()=>{S=null;busy=false;poke();clearTimeout(window.stepTimer);clearTimeout(window.rwTimer);clearInterval(window.cd);gems(0);say2(kiosk!="DIRECT_WEB"?"¡Hola! Soy Nina":"¡Hola! Soy Nina");
- show(`<div class="q">${kiosk!="DIRECT_WEB"?"Juega 2 minutos y gana un premio":"Juega 2 minutos y ayuda a tu comunidad"}</div><p class="sub">Ayuda a Nina a cruzar el barrio.</p><button class="audio" onclick="say('Juega dos minutos y ayuda a tu comunidad')">${spk}</button><div style="flex:1"></div><button class="btn" onclick="privacy()">${`<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M6 3l15 9-15 9z"/></svg>`} Jugar</button>`)};
-const privacy=()=>{tone(700);say2("Tus datos están a salvo");show(`<div class="q">Tu información es solo tuya</div><div class="pts"><div>${ic("no")}No pedimos tu nombre</div><div>${ic("user")}No pedimos tu cédula</div><div>${ic("lock")}Nada se guarda de ti</div></div><p class="sub">Solo jugamos. Tus respuestas son anónimas, como manda la Ley 81 de Panamá.</p><div style="flex:1"></div><button class="btn" onclick="age18()">Estoy de acuerdo</button><button class="btn alt" onclick="bye('Gracias por visitarnos. ¡Que tengas un lindo día!')">No, gracias</button>`)};
-const bye=m=>{say2("¡Hasta pronto!");show(`<div class="q">${m}</div><div style="flex:1"></div><button class="btn" onclick="home()">Volver al inicio</button>`);setTimeout(()=>{if(!S)home()},10000)};
-const age18=()=>{tone(700);fresh();poke();say2("Una pregunta rápida");show(`<div class="q">¿Tienes 18 años o más?</div><div style="flex:1"></div><button class="btn" onclick="tone(760);next()">Sí, tengo 18 o más</button><button class="btn alt" onclick="bye('Gracias por querer jugar. ¡Vuelve cuando cumplas 18!')">No, soy menor</button>`)};
-const next=()=>{busy=false;if(!S||S.done)return;if(!steps||idx>=steps.length||!steps[idx])return finish();const s=steps[idx];gems(s.stage);poke();R[s.k](s);const v={sent:"Toca la palabra que falta",sign:s.s?s.s[4]:"",icon:s.t?"Toca el ícono para "+s.t[1].toLowerCase():""}[s.k];if(v)setTimeout(()=>say(v),400)};
-const go=()=>{if(!S||S.done||busy)return;busy=true;tone(660,.1);tone(880,.12,.09);idx++;walk();clearTimeout(window.stepTimer);window.stepTimer=setTimeout(()=>{busy=false;next()},950)};
-const set=(k,v)=>{if(!S||S.done||busy||!steps||idx>=steps.length)return;S.d[k]=v;go()};
-const cards=(q,arr,key,iconFn)=>`<div class="q">${q}</div><div class="opts ${arr.length==5&&key=="age"?"":""}">${arr.map(o=>`<button class="opt" onclick="set('${key}','${o[0]}')">${iconFn?ic(o[2]):ic("cal")}${o[1]}</button>`).join("")}</div>`;
-const R={
- age:()=>{say2("¿Cuántos años tienes?");show(cards("¿Cuántos años tienes?",AGE,"age"))},
- work:()=>{say2("¿Y a qué te dedicas?");show(cards("¿A qué te dedicas?",WORK,"work",1))},
- school:()=>{say2("¿Hasta dónde estudiaste?");show(cards("¿Hasta dónde estudiaste?",SCH,"school",1))},
- zone:()=>{say2("¿Dónde vives?");show(`<div class="q">¿En qué barrio vives?</div><input class="srch" id="zi" placeholder="Busca tu barrio" autocomplete="off" oninput="zs(this.value)"><div class="chips" id="zr"></div>`);zs("");P_.insertAdjacentHTML("beforeend",`<div style="flex:1"></div><button class="btn alt" onclick="set('zone','DECLINED')">Prefiero no decir</button>`)},
- sign:s=>{say2("Busca el letrero");show(`<div class="q">${s.s[4]}</div><button class="audio" onclick="say('${s.s[4]}')">${spk}</button><div class="opts">${s.o.map(o=>`<button class="opt" style="padding:8px" onclick="ans(1,${o==s.s?1:0})"><div class="sign" style="background:${o[3]};width:100%">${ic(o[2],"ico").replace('class="ico"','class="ico" style="stroke:#fff;width:30px;height:30px;vertical-align:-6px;margin-right:8px"')}${o[1]}</div></button>`).join("")}</div>`)},
- sent:s=>{say2("Completa la frase");const[t,ok,bad]=s.s;show(`<div class="sent">${t.replace("___","<u>&nbsp;</u>")}</div><button class="audio" onclick="say('Toca la palabra que falta')">${spk}</button><div class="opts g2" style="grid-template-columns:repeat(3,1fr)">${sh([ok,...bad]).map(w=>`<button class="opt" onclick="ans(2,${w==ok?1:0})">${ic(WORDS[w])}${w}</button>`).join("")}</div>`);if(idx>=0)window._m=0},
- icon:s=>{say2("Mira tu celular");show(`<div class="q">Toca para: ${s.t[1].toLowerCase()}</div><button class="audio" onclick="say('Toca el ícono para ${s.t[1].toLowerCase()}')">${spk}</button><div class="opts g2">${s.o.map(o=>`<button class="opt" onclick="ans(3,${o==s.t?1:0})">${ic(o[2])}</button>`).join("")}</div>`)},
- swipe:s=>{say2("¿Seguro o riesgo?");show(`<div class="q">¿Es seguro o es un riesgo?</div><div id="card">${ic(s.s[0])}${s.s[1]}</div><p class="sub">Desliza la tarjeta o toca un botón</p><div class="row"><button class="btn risk" onclick="ans(4,${s.s[2]?1:0})">Riesgo</button><button class="btn safe" onclick="ans(4,${s.s[2]?0:1})">Seguro</button></div>`);drag(s)}
+const bld = (w, h, c, x) => `<svg style="left:${x}px" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${c}"/><rect x="-4" y="0" width="${w + 8}" height="9" fill="#2F4A72"/>${Array.from({ length: Math.floor(h / 26) * Math.floor(w / 26) }, (_, i) => `<rect x="${10 + (i % Math.floor(w / 26)) * 26}" y="${22 + Math.floor(i / Math.floor(w / 26)) * 26}" width="13" height="13" rx="3" fill="#fff" opacity=".28"/>`).join("")}</svg>`;
+let fx = "", nx = "";
+for (let i = 0; i < 14; i++) {
+  fx += `<svg style="left:${i * 260 + 20}px;bottom:34px" width="200" height="130" viewBox="0 0 200 130"><path d="M0 130L100 20L200 130z" fill="#fff" opacity=".35"/></svg>`;
+  nx += bld(80 + (i * 37 % 50), 90 + (i * 53 % 80), i % 2 ? "#46648C" : "#3C5983", i * 190 + 160) +
+    (i % 3 === 0 ? `<svg style="left:${i * 190 + 60}px" width="40" height="80" viewBox="0 0 40 80"><rect x="18" y="40" width="5" height="40" fill="#46648C"/><circle cx="20" cy="30" r="22" fill="#6E8FB8"/></svg>` : "");
+}
+$("#far").innerHTML = fx;
+$("#near").innerHTML = nx;
+const pose = (p, f, ms, l) => {
+  const h = $("#hero"); clearTimeout(pose.t); h.dataset.pose = p; h.dataset.face = f || "smile"; h.dataset.look = l || "";
+  if (ms) pose.t = setTimeout(() => { h.dataset.pose = "idle"; h.dataset.face = "smile"; h.dataset.look = ""; }, ms);
 };
-const ans=(c,ok)=>{if(!S||S.done||busy)return;if(!steps||idx>=steps.length||!steps[idx])return finish();const cur=steps[idx];S.sc["c"+c]+=ok;S.tot[c]++;gems(cur.stage);if(!ok)say2("¡Sigamos, tú puedes!");if(idx+1<steps.length&&steps[idx+1]&&steps[idx+1].stage!==cur.stage){gems(steps[idx+1].stage);burst();tone(988,.2,.15);say2("¡Qué bien vas, sigue!")}go()};
-const drag=s=>{const c=$("#card");let x0=null;c.onpointerdown=e=>{x0=e.clientX;c.setPointerCapture(e.pointerId);c.style.transition="none"};
- c.onpointermove=e=>{if(x0==null)return;const d=e.clientX-x0;c.style.transform=`translateX(${d}px) rotate(${d/12}deg)`;c.style.background=d>0?`rgba(16,185,129,${Math.min(d/200,.4)})`:`rgba(239,68,68,${Math.min(-d/200,.4)})`};
- c.onpointerup=e=>{if(x0==null)return;const d=e.clientX-x0;x0=null;c.style.transition="";if(Math.abs(d)>90){const safe=d>0;ans(4,(safe!=!!s.s[2])?1:0)}else{c.style.transform="";c.style.background=""}}};
-const semaforo=()=>{const c=S.out().internal_zone_classification;const M={GREEN:["Camino despejado","Ya dominas muchas cosas. ¡Podrías ayudar a otros a aprender!"],YELLOW:["Vas muy bien","Con un poco de práctica en el celular llegarás lejos."],RED:["Un gran comienzo","Hay cursos gratis para ti. ¡Aprender es cosa de todos!"]}[c];const col={RED:"#EF4444",YELLOW:"#F59E0B",GREEN:"#10B981"};return `<div class="lights">${["RED","YELLOW","GREEN"].map(k=>`<i class="${k==c?"on":""}" style="background:${col[k]};color:${col[k]}"></i>`).join("")}</div><div class="res"><b>${M[0]}</b><span>${M[1]}</span></div>`};
-const finish=()=>{if(!S||S.done)return;S.status="COMPLETED";S.done=true;busy=false;clearTimeout(window.stepTimer);clearTimeout(window.rwTimer);clearInterval(window.cd);clearTimeout(idle.a);clearTimeout(idle.b);gems(5);walk();say2("¡Llegamos juntos!");burst();
- const last=+localStorage.getItem("cclas_last")||0,repeat=Date.now()-last<864e5,off=!navigator.onLine,code=repeat?null:String(1000+Math.random()*9000|0);S.reward={issued:!repeat,repeat,type:repeat?"NONE":["BEVERAGE_DISPENSER","WIFI_CREDENTIAL","POWER_STATION"][Math.random()*3|0]};save();
- show(`<div class="q">¡Lo lograste! Gracias por ayudar a tu comunidad</div>${semaforo()}<p class="sub" style="font-size:17px;opacity:1">Consejo de Nina: ${TIPS[Math.random()*TIPS.length|0]}</p><div style="flex:1"></div><div id="rw" class="sub">Preparando tu premio…</div>`);
- window.rwTimer=setTimeout(()=>{let h;if(repeat)h=`<p class="q">Ya recibiste tu premio hoy. ¡Gracias por jugar otra vez!</p>`;else{localStorage.setItem("cclas_last",Date.now());h=`<p class="sub">Tu código de premio</p><div class="big">${code}</div>`}
-  h+=`<button class="btn" onclick="home()">Terminar <span id="n">10</span></button>`;const rwEl=$("#rw");if(rwEl)rwEl.outerHTML=`<div id="rw" style="display:contents">${h}</div>`;else if(P_)P_.insertAdjacentHTML("beforeend",`<div id="rw" style="display:contents">${h}</div>`);let n=10;clearInterval(window.cd);window.cd=setInterval(()=>{n--;const e=$("#n");if(e)e.textContent=n;if(n<=0){clearInterval(window.cd);home()}},1000)},off?0:1500)};
-home();
+let walked = 0;
+const walk = () => {
+  pose("idle"); walked++; $("#hero").classList.add("walk");
+  $("#near").style.transform = `translateX(${-walked * 150}px)`;
+  $("#far").style.transform = `translateX(${-walked * 60}px)`;
+  setTimeout(() => $("#hero").classList.remove("walk"), 900);
+};
+const say2 = text => { $("#bubble").textContent = text; };
+const burst = () => {
+  for (let i = 0; i < 18; i++) {
+    const star = document.createElement("i"); star.className = "star"; star.style.left = "50%"; star.style.top = "50%";
+    star.style.setProperty("--x", `${Math.random() * 300 - 150}px`); star.style.setProperty("--y", `${Math.random() * -200}px`);
+    $("#scene").appendChild(star); setTimeout(() => star.remove(), 1700);
+  }
+};
+const tier = ratio => ratio >= .75 ? "g" : ratio >= .45 ? "y" : "r";
+const stageKeys = ["stage.profile", "stage.signs", "stage.sentences", "stage.phone", "stage.security"];
+const gems = stage => {
+  currentGemStage = stage;
+  $("#gems").innerHTML = stageKeys.map((key, i) => {
+    let color = "";
+    if (i < stage || (i === stage && S && i > 0 && S.tot[i] > 0)) color = i && S && S.tot[i] ? tier(S.sc[`c${i}`] / S.tot[i]) : "on";
+    const label = i < stage ? t("progress.completed", { stage: t(key) }) : t("progress.current", { stage: t(key) });
+    return `<svg viewBox="0 0 24 24" class="${color}" role="img" aria-label="${label}"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>`;
+  }).join("");
+};
+
+// ---- progress persistence. This snapshot is separate from the API outbox and language preference.
+const readActiveProgress = () => {
+  try { return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY) || "null"); }
+  catch (error) { return null; }
+};
+const clearActiveProgress = () => { try { localStorage.removeItem(ACTIVE_SESSION_KEY); } catch (error) {} };
+const saveProgress = () => {
+  if (!S || S.done || S.status !== "IN_PROGRESS" || !Array.isArray(steps)) return;
+  const progress = {
+    version: 1,
+    session: {
+      id: S.id, d: S.d, sc: S.sc, tot: S.tot, status: S.status, done: S.done,
+      answers: S.answers, completedQuestionIds: S.completedQuestionIds,
+      kiosk: S.kiosk, origin: S.origin, assisted: S.assisted, reward: S.reward || null
+    },
+    steps, currentQuestionId: idx, elapsedSeconds: Math.max(0, Math.round((Date.now() - t0) / 1000))
+  };
+  try { localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(progress)); } catch (error) {}
+};
+const restoreActiveProgress = () => {
+  const saved = readActiveProgress();
+  if (!saved || saved.version !== 1 || !saved.session || !Array.isArray(saved.steps) ||
+      !saved.steps.length || !Number.isInteger(saved.currentQuestionId) || saved.currentQuestionId < 0 ||
+      saved.currentQuestionId > saved.steps.length) return false;
+  const session = saved.session;
+  if (session.status !== "IN_PROGRESS" || !session.id || !session.d || !session.sc || !Array.isArray(session.tot)) return false;
+  S = {
+    ...session,
+    answers: Array.isArray(session.answers) ? session.answers : [],
+    completedQuestionIds: Array.isArray(session.completedQuestionIds) ? session.completedQuestionIds : [],
+    out: () => sessionOutput()
+  };
+  steps = saved.steps; idx = saved.currentQuestionId;
+  t0 = Date.now() - Math.max(0, Number(saved.elapsedSeconds) || 0) * 1000;
+  return true;
+};
+
+// ---- inactivity
+const poke = () => {
+  $("#modal").style.display = "none"; clearTimeout(idle.a); clearTimeout(idle.b);
+  if (steps && S && !S.done) {
+    idle.a = setTimeout(() => { $("#modal").style.display = "grid"; tone(520, .4); }, 45000);
+    idle.b = setTimeout(() => { S.status = "ABANDONED"; save(); home(); }, 90000);
+  }
+};
+["pointerdown", "keydown"].forEach(eventName => addEventListener(eventName, () => {
+  if (S && !S.done && $("#modal").style.display !== "grid") poke();
+}));
+
+// ---- API session output and local completed-session history
+const sessionOutput = () => {
+  const scores = {
+    c1: Math.round(S.sc.c1 * 2 / 3), c2: Math.round(S.sc.c2 * 2 / 3),
+    c3: Math.round(S.sc.c3 * 2 / 3), c4: Math.round(S.sc.c4 * 3 / 4)
+  };
+  const total = scores.c1 + scores.c2 + scores.c3 + scores.c4, reward = S.reward || {};
+  return {
+    session_id: S.id, kiosk_id: S.kiosk || kiosk, origin: S.origin || origin, assisted_mode: S.assisted ?? assisted,
+    age_range: S.d.age, work_status: S.d.work, schooling_level: S.d.school, zone_code: S.d.zone,
+    c1_visual_signs_score: scores.c1, c2_sentence_comprehension_score: scores.c2,
+    c3_mobile_icons_score: scores.c3, c4_cybersecurity_score: scores.c4, total_literacy_score: total,
+    internal_zone_classification: total <= 3 ? "RED" : total <= 6 ? "YELLOW" : "GREEN",
+    completion_status: S.status === "COMPLETED" ? "COMPLETED" : "ABANDONED", last_step: `step_${idx}`,
+    duration_seconds: Math.min(7200, Math.round((Date.now() - t0) / 1000)), reward_issued: !!reward.issued,
+    iot_trigger_type: reward.type || "NONE", repeat_device: !!reward.repeat
+  };
+};
+const save = () => {
+  const output = S.out();
+  try {
+    const history = JSON.parse(localStorage.getItem("cclas_sessions") || "[]");
+    const existing = history.findIndex(item => item.session_id === output.session_id);
+    if (existing < 0) history.push(output); else history[existing] = output;
+    localStorage.setItem("cclas_sessions", JSON.stringify(history));
+  } catch (error) {}
+  clearActiveProgress();
+  sendSession(output);
+};
+
+// ---- assessment setup
+const fresh = () => {
+  const sc = { c1: 0, c2: 0, c3: 0, c4: 0 };
+  S = {
+    id: `SES-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+    d: { age: null, work: null, school: null, zone: null }, sc, tot: [0, 0, 0, 0, 0],
+    status: "IN_PROGRESS", done: false, answers: [], completedQuestionIds: [],
+    kiosk, origin, assisted, out: () => sessionOutput()
+  };
+  steps = [
+    { k: "age", stage: 0 }, { k: "work", stage: 0 }, { k: "school", stage: 0 }, { k: "zone", stage: 0 },
+    ...pick(SIGNS, 3).map(sign => ({ k: "sign", stage: 1, s: sign, o: sh([sign, ...pick(SIGNS.filter(item => item !== sign), 2)]) })),
+    ...pick(SENT, 3).map(sentence => ({ k: "sent", stage: 2, s: sentence })),
+    ...pick(ICONS, 3).map(icon => ({ k: "icon", stage: 3, t: icon, o: sh(pick(ICONS, 4).includes(icon) ? pick(ICONS, 4) : [icon, ...pick(ICONS.filter(item => item !== icon), 3)]) })),
+    ...pick(SCEN, 4).map(scenario => ({ k: "swipe", stage: 4, s: scenario }))
+  ];
+  steps.forEach(step => {
+    if (step.k === "icon" && !step.o.includes(step.t)) step.o[0] = step.t;
+    if (step.k === "icon") step.o = sh(step.o);
+  });
+  idx = 0; t0 = Date.now();
+};
+const show = html => { P_.innerHTML = `<div class="fade" style="display:contents">${html}</div>`; P_.scrollTop = 0; };
+
+// ---- language selector and screen rendering
+const updateLanguageControls = () => {
+  document.documentElement.lang = currentLanguage;
+  const selector = $("#language-selector");
+  selector.setAttribute("aria-label", t("language.group"));
+  selector.querySelector('[data-language="es"]').setAttribute("aria-label", t("language.spanish"));
+  selector.querySelector('[data-language="en"]').setAttribute("aria-label", t("language.english"));
+  selector.querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.language === currentLanguage)));
+  if (assisted) $("#asst").textContent = t("mode.assisted");
+  $("#modal-message").textContent = t("modal.stillThere");
+  $("#modal-button").textContent = t("modal.yes");
+  document.title = t("app.title");
+};
+const renderHome = () => {
+  pose("wave", "open", 3000); clearInterval(window.cd); gems(0); say2(t("welcome.greeting"));
+  show(`<div class="q">${t(kiosk !== "DIRECT_WEB" ? "welcome.kiosk" : "welcome.web")}</div><p class="sub">${t("welcome.subtitle")}</p><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${t("welcome.web")}')">${spk}</button><div style="flex:1"></div><button class="btn" onclick="privacy()"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M6 3l15 9-15 9z"/></svg>${t("welcome.play")}</button>`);
+};
+const renderPrivacy = () => {
+  say2(t("privacy.bubble"));
+  show(`<div class="q">${t("privacy.title")}</div><div class="pts"><div>${ic("no")} ${t("privacy.noName")}</div><div>${ic("user")} ${t("privacy.noId")}</div><div>${ic("lock")} ${t("privacy.noStorage")}</div></div><p class="sub">${t("privacy.description")}</p><div style="flex:1"></div><button class="btn" onclick="age18()">${t("privacy.agree")}</button><button class="btn alt" onclick="bye('goodbye.noThanks')">${t("privacy.decline")}</button>`);
+};
+let goodbyeKey = "goodbye.noThanks";
+const renderGoodbye = () => {
+  pose("wave", "smile", 2600); say2(t("goodbye.title"));
+  show(`<div class="q">${t(goodbyeKey)}</div><div style="flex:1"></div><button class="btn" onclick="home()">${t("goodbye.return")}</button>`);
+};
+const renderAgeGate = () => {
+  say2(t("age.quick"));
+  show(`<div class="q">${t("age.adultQuestion")}</div><div style="flex:1"></div><button class="btn" onclick="tone(760);next()">${t("age.yes")}</button><button class="btn alt" onclick="bye('goodbye.underage')">${t("age.no")}</button>`);
+};
+const home = () => {
+  S = null; currentView = "home"; resultPresentation = null; poke(); clearInterval(window.cd); gems(0); renderHome();
+};
+const privacy = () => { tone(700); currentView = "privacy"; renderPrivacy(); };
+const bye = key => { S = null; currentView = "goodbye"; goodbyeKey = key; renderGoodbye(); setTimeout(() => { if (!S && currentView === "goodbye") home(); }, 10000); };
+const age18 = () => { tone(700); fresh(); currentView = "ageGate"; poke(); renderAgeGate(); };
+const changeLanguage = language => {
+  const scrollTop = P_.scrollTop;
+  setLanguage(language); updateLanguageControls(); renderCurrent(); gems(currentGemStage); P_.scrollTop = scrollTop;
+};
+const renderCurrent = () => {
+  if (currentView === "home") renderHome();
+  else if (currentView === "privacy") renderPrivacy();
+  else if (currentView === "goodbye") renderGoodbye();
+  else if (currentView === "ageGate") renderAgeGate();
+  else if (currentView === "question" && steps && idx < steps.length) renderQuestion(steps[idx]);
+  else if (currentView === "finish" && resultPresentation) renderFinish();
+};
+
+// ---- assessment flow
+const next = () => {
+  if (idx >= steps.length) return finish();
+  const step = steps[idx]; currentView = "question"; gems(step.stage); poke(); saveProgress();
+  renderQuestion(step); pose(step.stage ? "watch" : "idle", "smile", 0, step.stage ? "down" : "");
+  const voiceHint = step.k === "sent" ? t("interaction.fillWord") : step.k === "sign" ? tContent(step.s[4]) :
+    step.k === "icon" ? t("interaction.tapIcon", { label: tContent(step.t[1]).toLowerCase() }) : "";
+  if (voiceHint) setTimeout(() => say(voiceHint), 400);
+};
+const go = () => {
+  tone(660, .1); tone(880, .12, .09); idx++; saveProgress();
+  setTimeout(walk, 380); setTimeout(next, 1330);
+};
+const set = (key, value) => {
+  S.d[key] = value;
+  S.answers.push({ questionIndex: idx, answerId: `profile:${key}:${value}` });
+  S.completedQuestionIds.push(`step_${idx}`);
+  pose("nod", "open", 380); go();
+};
+const cards = (questionKey, options, key, iconFn) => `<div class="q">${t(questionKey)}</div><div class="opts ${options.length === 5 && key === "age" ? "" : ""}">${options.map(option => `<button class="opt" onclick="set('${key}','${option[0]}')">${iconFn ? ic(option[2]) : ic("cal")}${tContent(option[1])}</button>`).join("")}</div>`;
+const renderQuestion = step => R[step.k](step);
+const R = {
+  age: () => { say2(t("question.age")); show(cards("question.age", AGE, "age")); },
+  work: () => { say2(t("question.work")); show(cards("question.work", WORK, "work", 1)); },
+  school: () => { say2(t("question.school")); show(cards("question.school", SCH, "school", 1)); },
+  zone: () => {
+    say2(t("question.zone"));
+    show(`<div class="q">${t("question.zone")}</div><input class="srch" id="zi" aria-label="${t("zone.search")}" placeholder="${t("zone.search")}" autocomplete="off" oninput="zs(this.value)"><div class="chips" id="zr"></div><div style="flex:1"></div><button class="btn alt" onclick="set('zone','DECLINED')">${t("zone.decline")}</button>`);
+    zs("");
+  },
+  sign: step => {
+    say2(t("interaction.findSign"));
+    show(`<div class="q">${tContent(step.s[4])}</div><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${tContent(step.s[4])}')">${spk}</button><div class="opts">${step.o.map(option => `<button class="opt" style="padding:8px" onclick="ans(1,${option[0] === step.s[0] ? 1 : 0},'sign:${option[0]}')"><div class="sign" style="background:${option[3]};width:100%">${ic(option[2], "ico").replace('class="ico"', 'class="ico" style="stroke:#fff;width:30px;height:30px;vertical-align:-6px;margin-right:8px"')}${tContent(option[1])}</div></button>`).join("")}</div>`);
+  },
+  sent: step => {
+    say2(t("interaction.fillWord")); const [sentence, correct, incorrect] = step.s;
+    show(`<div class="sent">${tContent(sentence).replace("___", "<u>&nbsp;</u>")}</div><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${t("interaction.fillWord")}')">${spk}</button><div class="opts g2" style="grid-template-columns:repeat(3,1fr)">${sh([correct, ...incorrect]).map(word => `<button class="opt" onclick="ans(2,${word === correct ? 1 : 0},'word:${word}')">${ic(WORDS[word])}${tContent(word)}</button>`).join("")}</div>`);
+  },
+  icon: step => {
+    say2(t("interaction.phone"));
+    const label = tContent(step.t[1]).toLowerCase();
+    show(`<div class="q">${t("interaction.tapFor", { label })}</div><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${t("interaction.tapIcon", { label })}')">${spk}</button><div class="opts g2">${step.o.map(option => `<button class="opt" aria-label="${tContent(option[1])}" onclick="ans(3,${option[0] === step.t[0] ? 1 : 0},'icon:${option[0]}')">${ic(option[2])}</button>`).join("")}</div>`);
+  },
+  swipe: step => {
+    say2(t("interaction.safeRisk"));
+    show(`<div class="q">${t("interaction.safeRiskQuestion")}</div><div id="card">${ic(step.s[0])}${tContent(step.s[1])}</div><p class="sub">${t("interaction.drag")}</p><div class="row"><button class="btn risk" onclick="ans(4,${step.s[2] ? 1 : 0},'scenario:risk')">${t("answer.risk")}</button><button class="btn safe" onclick="ans(4,${step.s[2] ? 0 : 1},'scenario:safe')">${t("answer.safe")}</button></div>`);
+    drag(step);
+  }
+};
+const ans = (category, correct, answerId) => {
+  pose(correct ? "cheer" : "shrug", correct ? "open" : "smile", 380);
+  S.sc[`c${category}`] += correct; S.tot[category]++;
+  S.answers.push({ questionIndex: idx, answerId }); S.completedQuestionIds.push(`step_${idx}`);
+  gems(steps[idx].stage);
+  if (!correct) say2(t("feedback.encouragement"));
+  if (idx + 1 < steps.length && steps[idx + 1].stage !== steps[idx].stage) {
+    gems(steps[idx].stage + 1); burst(); tone(988, .2, .15); say2(t("feedback.stageComplete")); pose("cheer", "open", 380);
+  }
+  go();
+};
+const drag = step => {
+  const card = $("#card"); let startX = null;
+  card.onpointerdown = event => { startX = event.clientX; card.setPointerCapture(event.pointerId); card.style.transition = "none"; };
+  card.onpointermove = event => {
+    if (startX == null) return;
+    const distance = event.clientX - startX; card.style.transform = `translateX(${distance}px) rotate(${distance / 12}deg)`;
+    card.style.background = distance > 0 ? `rgba(16,185,129,${Math.min(distance / 200, .4)})` : `rgba(239,68,68,${Math.min(-distance / 200, .4)})`;
+  };
+  card.onpointerup = event => {
+    if (startX == null) return;
+    const distance = event.clientX - startX; startX = null; card.style.transition = "";
+    if (Math.abs(distance) > 90) {
+      const safe = distance > 0; ans(4, (safe !== !!step.s[2]) ? 1 : 0, `scenario:${safe ? "safe" : "risk"}`);
+    } else { card.style.transform = ""; card.style.background = ""; }
+  };
+};
+
+// ---- results and reward
+const semaforo = () => {
+  const classification = S.out().internal_zone_classification;
+  const keys = {
+    GREEN: ["result.green.title", "result.green.description"],
+    YELLOW: ["result.yellow.title", "result.yellow.description"],
+    RED: ["result.red.title", "result.red.description"]
+  }[classification];
+  const colors = { RED: "#EF4444", YELLOW: "#F59E0B", GREEN: "#10B981" };
+  return `<div class="lights" aria-label="${t(`result.${classification.toLowerCase()}.title`)}">${["RED", "YELLOW", "GREEN"].map(color => `<i class="${color === classification ? "on" : ""}" style="background:${colors[color]};color:${colors[color]}" aria-hidden="true"></i>`).join("")}</div><div class="res"><b>${t(keys[0])}</b><span>${t(keys[1])}</span></div>`;
+};
+const renderFinish = () => {
+  if (!resultPresentation) return;
+  const { repeat, code, tip, ready, countdown } = resultPresentation;
+  let reward = t("reward.preparing");
+  if (ready) reward = repeat ? `<p class="q">${t("reward.alreadyReceived")}</p>` : `<p class="sub">${t("reward.code")}</p><div class="big">${code}</div>`;
+  if (ready) reward += `<button class="btn" onclick="home()">${t("reward.finish")} <span id="n">${countdown}</span></button>`;
+  show(`<div class="q">${t("result.complete")}</div>${semaforo()}<p class="sub" style="font-size:17px;opacity:1">${t("result.tip", { tip: tContent(tip) })}</p><div style="flex:1"></div><div id="rw" class="sub">${reward}</div>`);
+};
+const finish = () => {
+  S.status = "COMPLETED"; S.done = true; clearTimeout(idle.a); clearTimeout(idle.b); gems(5); walk(); say2(t("result.arrival")); burst();
+  setTimeout(() => pose("cheer", "open", 900), 950); setTimeout(() => pose("wave", "open", 5000), 1950);
+  const last = +localStorage.getItem("cclas_last") || 0, repeat = Date.now() - last < 864e5;
+  const offline = !navigator.onLine, code = repeat ? null : String(1000 + Math.random() * 9000 | 0);
+  S.reward = { issued: !repeat, repeat, type: repeat ? "NONE" : ["BEVERAGE_DISPENSER", "WIFI_CREDENTIAL", "POWER_STATION"][Math.random() * 3 | 0] };
+  save();
+  resultPresentation = { repeat, code, tip: T(TIPS), ready: false, countdown: 10 };
+  currentView = "finish"; renderFinish();
+  setTimeout(() => {
+    if (currentView !== "finish" || !resultPresentation) return;
+    resultPresentation.ready = true;
+    if (!repeat) localStorage.setItem("cclas_last", Date.now());
+    renderFinish();
+    window.cd = setInterval(() => {
+      if (!resultPresentation) return clearInterval(window.cd);
+      resultPresentation.countdown--;
+      const counter = $("#n"); if (counter) counter.textContent = resultPresentation.countdown;
+      if (resultPresentation.countdown <= 0) { clearInterval(window.cd); home(); }
+    }, 1000);
+  }, offline ? 0 : 1500);
+};
+
+// Initialize language before showing a screen, then restore any saved assessment.
+updateLanguageControls();
+if (restoreActiveProgress()) {
+  currentView = "question"; say2(t("session.resumed")); poke();
+  if (idx === steps.length) finish(); else renderCurrent();
+} else {
+  home();
+}

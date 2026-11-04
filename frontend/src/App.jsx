@@ -11,6 +11,7 @@ import {
   completeAssessmentSession,
 } from "./api/api";
 import Onboarding from "./components/Onboarding";
+import { readStoredEntryContext } from "./hooks/useKioskEntry";
 import DemographicForm from "./components/DemographicForm";
 import Assessment from "./components/Assessment";
 import ResultScreen from "./components/ResultScreen";
@@ -22,6 +23,7 @@ import "./App.css";
 function App() {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
   const [hasConsent, setHasConsent] = useState(false);
+  const [entrySessionPayload, setEntrySessionPayload] = useState(null);
   const [demographics, setDemographics] = useState(null);
   const [backendSession, setBackendSession] = useState(null);
   const [backendQuestions, setBackendQuestions] = useState([]);
@@ -56,9 +58,11 @@ function App() {
 
     const zoneDeclined = data.zoneCode === "DECLINED";
 
+    const storedEntry = entrySessionPayload || readStoredEntryContext();
+
     const payload = {
-      access_point_code: "DIRECT_WEB",
-      assisted_mode: false,
+      access_point_code: storedEntry?.access_point_code || "DIRECT_WEB",
+      assisted_mode: Boolean(storedEntry?.assisted_mode),
       age_range: data.ageRange,
       work_status: data.workStatus,
       schooling_level: data.schoolingLevel,
@@ -147,7 +151,16 @@ function App() {
   };
 
   if (!hasConsent) {
-    return <Onboarding onComplete={() => setHasConsent(true)} />;
+    return (
+      <Onboarding
+        onComplete={(kioskPayload) => {
+          if (kioskPayload) {
+            setEntrySessionPayload(kioskPayload);
+          }
+          setHasConsent(true);
+        }}
+      />
+    );
   }
 
   if (demographics === null) {
