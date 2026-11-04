@@ -65,3 +65,79 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 #hero.walk .l1{animation:sw .3s ease-in-out infinite alternate}#hero.walk .l2,#hero.walk .a2{animation:sw .3s ease-in-out infinite alternate-reverse}
 @keyframes walk{50%{transform:translateY(-5px)}}@keyframes sw{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
 #scene{min-height:210px}#bubble{top:8px}
+
+/* ===== Tema v3 · GBM x Nina ===== */
+:root{--s1:#BEE7FB;--s2:#EAF6FE;--qc:#0A192F}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--s1:#0E2A57;--s2:#1D5C94;--qc:#fff}}
+body{background:radial-gradient(120% 80% at 50% 0,#12305a,var(--navy))}
+#app{box-shadow:0 0 60px rgba(0,163,224,.25)}
+header{background:linear-gradient(90deg,var(--navy),#0F2C52);height:52px}
+header::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 4px rgba(0,163,224,.28),0 0 14px var(--cyan);margin-right:10px}
+#prog{height:5px;background:var(--navy);flex:none;position:relative}
+#prog i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--cyan),#5EDBFF);border-radius:0 5px 5px 0;transition:width .7s cubic-bezier(.5,0,.2,1);box-shadow:0 0 10px var(--cyan)}
+.gems svg{filter:drop-shadow(0 3px 4px rgba(0,114,206,.25))}.gems svg.on{animation:gem 2s ease-in-out infinite}@keyframes gem{50%{transform:scale(1.28) rotate(-6deg)}}
+#scene{background:linear-gradient(var(--s1),var(--s2) 85%)}
+#scene::before{content:"";position:absolute;right:14%;top:16%;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,#FFF6C9 30%,#FFD66B 62%,rgba(255,214,107,0) 72%);box-shadow:0 0 40px 12px rgba(255,214,107,.45)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) #scene::before{background:radial-gradient(circle,#F4F6F9 55%,rgba(244,246,249,0) 70%);box-shadow:0 0 30px 8px rgba(190,230,251,.3)}}
+#scene::after{content:"";position:absolute;left:-90px;top:30%;width:60px;height:18px;border-radius:20px;background:#fff;opacity:.85;box-shadow:26px -10px 0 4px #fff,-12px 6px 0 -2px rgba(255,255,255,.7),170px 34px 0 -2px #fff;animation:cloud 60s linear infinite}
+@keyframes cloud{to{transform:translateX(620px)}}
+#ground{background:linear-gradient(var(--b1),var(--b2))}
+#ground::after{content:"";position:absolute;left:0;right:0;top:15px;height:4px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 22px,transparent 22px 46px)}
+#scene:has(#hero.walk) #ground::after{animation:road .3s linear infinite}@keyframes road{to{background-position:-46px 0}}
+#bubble{background:#fff;color:var(--navy);border:3px solid var(--cyan);box-shadow:0 4px 0 rgba(0,114,206,.25);border-radius:18px;font:600 16px Fredoka;padding:8px 16px}
+#bubble::after{content:"";position:absolute;left:50%;bottom:-11px;width:14px;height:14px;background:#fff;border:3px solid var(--cyan);border-top:0;border-left:0;transform:translateX(-50%) rotate(45deg);border-radius:0 0 4px 0}
+#bubble.pop{animation:bp .4s cubic-bezier(.3,1.6,.5,1)}@keyframes bp{from{transform:translateX(-50%) scale(.6);opacity:0}}
+.star{background:var(--cyan)}.star:nth-child(3n){background:#F59E0B}.star:nth-child(3n+1){background:#10B981}
+
+/* Nina: expresiones */
+#hero .br,#hero .sw,#hero .spk{transform-box:fill-box;transform-origin:50% 50%;transition:transform .25s}
+#hero .sw,#hero .spk{display:none}
+#hero[data-face=happy] .m-open,#hero[data-face=oops] .m-sad,#hero[data-face=think] .m-flat{display:inline}
+#hero[data-face=happy] .br{transform:translateY(-3px)}#hero[data-face=happy] .look{transform:scale(1.15)}
+#hero[data-face=happy] .spk{display:inline;animation:tw .5s ease-in-out infinite alternate}@keyframes tw{to{transform:scale(1.35) rotate(20deg)}}
+#hero[data-face=oops] .br-l{transform:rotate(-14deg) translateY(1px)}#hero[data-face=oops] .br-r{transform:rotate(14deg) translateY(1px)}
+#hero[data-face=oops] .look{transform:scale(.9) translateY(2px)}#hero[data-face=oops] .sw{display:inline}
+#hero[data-face=think] .br-r{transform:translateY(-4px) rotate(-6deg)}#hero[data-face=think] .look{transform:translate(3px,-3px)}
+
+/* Panel de abajo */
+#panel{background:linear-gradient(var(--sky2),var(--sky2)) center 10px/46px 5px no-repeat,linear-gradient(var(--card),var(--bg) 160%);border-radius:32px 32px 0 0;margin-top:-22px;padding:28px 18px calc(18px + var(--sb));gap:14px;box-shadow:0 -8px 28px rgba(10,25,47,.18),inset 0 3px 0 rgba(255,255,255,.7)}
+.q{font:700 23px/1.2 Fredoka;color:var(--qc)}
+.opts{gap:12px}
+.opt{border-radius:22px;background:var(--card);box-shadow:0 6px 0 var(--sky2),0 10px 18px rgba(10,25,47,.07);animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}
+.opts>:nth-child(2){animation-delay:.06s}.opts>:nth-child(3){animation-delay:.12s}.opts>:nth-child(4){animation-delay:.18s}.opts>:nth-child(5){animation-delay:.24s}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.94)}}
+.opt svg{width:48px;height:48px;padding:9px;border-radius:16px;background:color-mix(in srgb,var(--cyan) 16%,var(--card));stroke:var(--blue);stroke-width:1.8}.g2 .opt svg{width:56px;height:56px}
+.sign svg{background:none!important;padding:0!important;border-radius:0!important}
+.opt.pick,.btn.pick{animation:pk .35s ease-out}@keyframes pk{40%{transform:scale(1.06);box-shadow:0 0 0 6px color-mix(in srgb,var(--cyan) 35%,transparent)}}
+.btn{background:linear-gradient(180deg,#1A8CE6,var(--blue));border-radius:20px;min-height:58px;position:relative;overflow:hidden;box-shadow:0 6px 0 #00539A,0 12px 20px rgba(0,114,206,.3)}
+.btn::after{content:"";position:absolute;inset:0 0 50%;background:linear-gradient(rgba(255,255,255,.28),transparent);pointer-events:none}
+.btn.alt{background:var(--card);box-shadow:0 5px 0 var(--sky2)}.btn.alt::after{display:none}
+.btn.safe{background:linear-gradient(#34D399,#10B981)}.btn.risk{background:linear-gradient(#F87171,#EF4444)}
+.btn.go{animation:pulse 2s ease-in-out infinite}@keyframes pulse{50%{transform:scale(1.03)}}
+.audio{box-shadow:0 0 0 0 rgba(0,114,206,.35);animation:ring 2.4s ease-out infinite}@keyframes ring{to{box-shadow:0 0 0 14px rgba(0,114,206,0)}}
+.sign{border-radius:14px;box-shadow:inset 0 3px 0 rgba(255,255,255,.25),0 3px 8px rgba(0,0,0,.2)}
+.sent u{background:color-mix(in srgb,var(--cyan) 15%,transparent);border-radius:8px 8px 0 0}
+.chip{background:var(--card);box-shadow:0 4px 0 var(--sky2)}.chip:active{transform:translateY(3px);box-shadow:0 1px 0 var(--sky2)}
+#card{background:var(--card);border-radius:26px;padding:26px 20px;box-shadow:0 8px 0 var(--sky2),0 14px 24px rgba(10,25,47,.12)}
+#card .ico{width:68px;height:68px;padding:12px;border-radius:22px;background:color-mix(in srgb,var(--cyan) 16%,var(--card))}
+.lights{background:var(--navy);border-radius:40px;padding:12px 20px;width:fit-content;margin:0 auto;gap:14px}
+.lights i{width:44px;height:44px;opacity:.22}.lights i.on{box-shadow:0 0 0 6px color-mix(in srgb,currentColor 28%,transparent),0 0 26px currentColor}
+.res{background:var(--card);border:3px solid var(--sky2);box-shadow:0 6px 0 var(--sky2)}
+.big{background:linear-gradient(135deg,var(--card),color-mix(in srgb,var(--cyan) 14%,var(--card)));text-shadow:0 2px 0 rgba(0,114,206,.18)}
+#modal{backdrop-filter:blur(4px)}#modal div{animation:pop .4s cubic-bezier(.3,1.5,.5,1) both}
+button:focus-visible,input:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== v4: GBM limpio, suelo firme, Nina nueva ===== */
+header::before{display:none}header{font-size:26px;letter-spacing:.16em}
+#scene{height:38%;min-height:236px}
+#ground{height:58px;border-top:0;background:linear-gradient(#9DBEE0 0 4px,var(--b1) 4px 18px,var(--b2) 18px)}
+#ground::after{top:38px}
+.layer svg{bottom:54px!important}.layer svg.cl{bottom:auto!important}
+#hero{bottom:40px}
+#hero .eh{display:none}#hero[data-face=happy] .eh{display:inline}#hero[data-face=happy] .look{opacity:0}
+
+/* ===== v5: nube más abajo que aparece y desaparece ===== */
+#scene::after{top:44%;opacity:0;animation:cloud 48s linear infinite}
+@keyframes cloud{0%{transform:translateX(0);opacity:0}12%{opacity:.8}88%{opacity:.8}100%{transform:translateX(640px);opacity:0}}
+.layer svg.cl{opacity:.7}
