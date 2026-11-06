@@ -2,8 +2,10 @@ import math
 from sqlalchemy import Numeric, case, cast, func, select
 from sqlalchemy.orm import Session
 
-from app.models.game_session import GameSession
-from app.models.zone import Kiosk, Zone
+from app.models.access_points import AccessPoint
+from app.models.assessment_results import AssessmentResult, LiteracyClassification
+from app.models.assessment_session import AssessmentSession
+from app.models.zone import Zone
 from app.schemas.analytics import (
     KioskC4DispersalItem,
     KioskC4DispersalResponse,
@@ -30,15 +32,33 @@ def get_zone_vulnerability_ranking(db: Session) -> ZoneVulnerabilityRankingRespo
     Agrega sesiones por zona y utiliza funciones de ventana (RANK, DENSE_RANK y AVG OVER)
     para clasificar las zonas según su índice de literacidad crítica (% en categoría RED).
     """
-    total_sessions_expr = func.count(GameSession.session_id)
+    total_sessions_expr = func.count(AssessmentSession.session_id)
     red_sessions_expr = func.count(
-        case((GameSession.internal_zone_classification == "RED", 1))
+        case(
+            (
+                AssessmentResult.literacy_classification
+                == LiteracyClassification.RED,
+                1,
+            )
+        )
     )
     yellow_sessions_expr = func.count(
-        case((GameSession.internal_zone_classification == "YELLOW", 1))
+        case(
+            (
+                AssessmentResult.literacy_classification
+                == LiteracyClassification.YELLOW,
+                1,
+            )
+        )
     )
     green_sessions_expr = func.count(
-        case((GameSession.internal_zone_classification == "GREEN", 1))
+        case(
+            (
+                AssessmentResult.literacy_classification
+                == LiteracyClassification.GREEN,
+                1,
+            )
+        )
     )
     critical_index_expr = func.round(
         cast(
@@ -50,20 +70,27 @@ def get_zone_vulnerability_ranking(db: Session) -> ZoneVulnerabilityRankingRespo
 
     zone_stats = (
         select(
-            GameSession.zone_code.label("zone_code"),
-            func.coalesce(Zone.name, GameSession.zone_code).label("zone_name"),
+            AssessmentSession.zone_code.label("zone_code"),
+            func.coalesce(Zone.name, AssessmentSession.zone_code).label("zone_name"),
             total_sessions_expr.label("total_sessions"),
             red_sessions_expr.label("red_sessions"),
             yellow_sessions_expr.label("yellow_sessions"),
             green_sessions_expr.label("green_sessions"),
             func.round(
-                cast(func.avg(GameSession.total_literacy_score), Numeric), 2
+                cast(func.avg(AssessmentResult.total_literacy_score), Numeric), 2
             ).label("avg_total_score"),
             critical_index_expr.label("critical_literacy_index"),
         )
-        .outerjoin(Zone, Zone.code == GameSession.zone_code)
-        .where(GameSession.zone_code.is_not(None))
-        .group_by(GameSession.zone_code, Zone.name)
+        .join(
+            AssessmentResult,
+            AssessmentResult.session_id == AssessmentSession.session_id,
+        )
+        .outerjoin(Zone, Zone.code == AssessmentSession.zone_code)
+        .where(
+            AssessmentSession.zone_code.is_not(None),
+            AssessmentSession.zone_code != "DECLINED",
+        )
+        .group_by(AssessmentSession.zone_code, Zone.name)
         .cte("zone_stats")
     )
 
@@ -124,10 +151,10 @@ def get_zone_vulnerability_ranking(db: Session) -> ZoneVulnerabilityRankingRespo
 def get_kiosk_c4_dispersal(db: Session) -> KioskC4DispersalResponse:
     """Query 2 (Time-based Anomaly / Dispersal):
     Calcula la desviación estándar, varianza, distribución percentil (P25, P50, P75, IQR)
-    de c4_cybersecurity_score y dispersión temporal de duración por Kiosco para identificar ubicaciones atípicas (outliers).
+    de c4_cybersecurity_score y dispersión temporal de duración por punto de acceso para identificar ubicaciones atípicas (outliers).
     """
-    c4_col = GameSession.c4_cybersecurity_score
-    dur_col = GameSession.duration_seconds
+    c4_col = AssessmentResult.c4_cybersecurity_score
+    dur_col = AssessmentSession.duration_seconds
 
     avg_c4_expr = func.avg(c4_col)
     var_c4_expr = func.avg(c4_col * c4_col) - (avg_c4_expr * avg_c4_expr)
@@ -137,10 +164,20 @@ def get_kiosk_c4_dispersal(db: Session) -> KioskC4DispersalResponse:
 
     kiosk_stats = (
         select(
-            GameSession.kiosk_id.label("kiosk_id"),
-            func.coalesce(Kiosk.name, GameSession.kiosk_id).label("kiosk_name"),
-            Kiosk.zone_code.label("zone_code"),
-            func.count(GameSession.session_id).label("total_sessions"),
+            AssessmentSession.access_point_code.label("kiosk_id"),
+            func.coalesce(
+                AccessPoint.name, AssessmentSession.access_point_code
+            ).label("kiosk_name"),
+            func.max(
+                case(
+                    (
+                        AssessmentSession.zone_code != "DECLINED",
+                        AssessmentSession.zone_code,
+                    ),
+                    else_=None,
+                )
+            ).label("zone_code"),
+            func.count(AssessmentSession.session_id).label("total_sessions"),
             avg_c4_expr.label("avg_c4_score"),
             var_c4_expr.label("var_c4_score"),
             func.min(c4_col).label("min_c4_score"),
@@ -152,8 +189,15 @@ def get_kiosk_c4_dispersal(db: Session) -> KioskC4DispersalResponse:
             avg_dur_expr.label("avg_duration_seconds"),
             var_dur_expr.label("var_duration_seconds"),
         )
-        .outerjoin(Kiosk, Kiosk.code == GameSession.kiosk_id)
-        .group_by(GameSession.kiosk_id, Kiosk.name, Kiosk.zone_code)
+        .join(
+            AssessmentResult,
+            AssessmentResult.session_id == AssessmentSession.session_id,
+        )
+        .outerjoin(
+            AccessPoint,
+            AccessPoint.code == AssessmentSession.access_point_code,
+        )
+        .group_by(AssessmentSession.access_point_code, AccessPoint.name)
         .cte("kiosk_stats")
     )
 

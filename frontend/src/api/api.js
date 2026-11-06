@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8000"
+).replace(/\/$/, "");
 
 async function handleResponse(response, fallbackError) {
   if (!response.ok) {

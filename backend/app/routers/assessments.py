@@ -90,7 +90,7 @@ def complete_assessment_session(
 
     return AssessmentCompletionResponse(
         session_id=result.session_id,
-        completion_status=result.result.completion_status,
+        completion_status=result.session.completion_status,
         total_literacy_score=result.total_literacy_score,
         literacy_classification=result.literacy_classification,
     )

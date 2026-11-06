@@ -17,4 +17,3 @@ class AssessmentSubmission(Base):
     demographic_profile = relationship("DemographicProfiles", back_populates="submissions")
     location = relationship("Location", back_populates="submissions")
     answers = relationship("Answer", back_populates="submission", cascade="all, delete-orphan")
-    result= relationship("AssessmentResult", back_populates="submission", uselist=False, cascade="all, delete-orphan")

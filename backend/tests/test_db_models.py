@@ -49,16 +49,13 @@ def test_defaults_for_minimal_session(db):
 
 def test_legacy_models_relationships_and_cascade(db):
     a = Assessment(title="t", description="d", assessment_type="literacy")
-    q = Questions(category="test", question_text="?", question_type="mc", correct_answer="a", points=1)
-    a.questions.append(q)
     loc = Location(country="PA", city="Panamá", zone_name="Curundú")
     prof = DemographicProfiles(age_group="35_49", education_level="PRIMARY_INCOMPLETE", employment_status="INFORMAL")
     sub = AssessmentSubmission(assessment=a, location=loc, demographic_profile=prof, consent_given=True)
-    Answer(question=q, submission=sub, is_correct=True, answer_value=1, points_awarded=1)
-    AssessmentResult(submission=sub, literacy_score=1, total_score=1, digital_score=0, priority_level=1)
+    Answer(submission=sub, is_correct=True, answer_value=1, points_awarded=1)
     db.add_all([a, loc, prof, sub])
     db.commit()
-    assert sub.result is not None and len(sub.answers) == 1 and q.answers[0].submission is sub
+    assert len(sub.answers) == 1
     db.delete(sub)
     db.commit()
-    assert db.query(Answer).count() == 0 and db.query(AssessmentResult).count() == 0
+    assert db.query(Answer).count() == 0

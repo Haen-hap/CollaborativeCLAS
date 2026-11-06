@@ -188,6 +188,71 @@ body {
   gap: 12px;
 }
 
+.gbm-credential-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Bilingual ES/EN language selector (matches participant #language-selector) */
+.cclas-lang-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.cclas-lang-selector button {
+  min-width: 34px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #d9e7f5;
+  font: 800 12px/1 Nunito, Inter, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  padding: 0 9px;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.cclas-lang-selector button:hover:not([aria-pressed="true"]) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cclas-lang-selector button[aria-pressed="true"] {
+  background: #0072CE;
+  color: #ffffff;
+}
+
+.cclas-lang-selector button:focus-visible {
+  outline: 2px solid #0072CE;
+  outline-offset: 2px;
+}
+
+.cclas-lang-selector.is-light {
+  background: #F4F6F9;
+  border-color: rgba(10, 25, 47, 0.16);
+}
+
+.cclas-lang-selector.is-light button {
+  color: #1C2530;
+}
+
+.cclas-lang-selector.is-light button:hover:not([aria-pressed="true"]) {
+  color: #0A192F;
+  background: rgba(10, 25, 47, 0.06);
+}
+
+.cclas-lang-selector.is-light button[aria-pressed="true"] {
+  background: #0072CE;
+  color: #ffffff;
+}
+
 .gbm-brand-monogram {
   display: inline-flex;
   align-items: baseline;
@@ -1752,6 +1817,13 @@ body {
   color: var(--text-dim);
   font-size: 15px;
   line-height: 1.6;
+}
+
+.admin-page-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .admin-preview-badge {

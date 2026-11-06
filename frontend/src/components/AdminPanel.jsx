@@ -2,43 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import { getAdminDashboardStats } from "../api/api";
+import { LanguageSelector, useI18n } from "../utils/i18n";
 
-const adminPages = {
-  dashboard: {
-    label: "Datos Generales",
-    title: "Datos Generales · Dashboard",
-    description: "Resumen general de actividad y resultados de evaluación.",
-    placeholder:
-      "Dashboard cards and the Red/Yellow/Green chart will appear here.",
-  },
-  intelligence: {
-    label: "Inteligencia IA",
-    title: "AI Intelligence & Machine Learning",
-    description:
-      "Ranking de vulnerabilidad crítica por zona, dispersión C4 por kiosco y alertas automatizadas Pre-ML.",
-    placeholder: "",
-  },
-  results: {
-    label: "Results",
-    title: "Assessment results",
-    description: "Review assessment results in one place.",
-    placeholder:
-      "The results table and filters will appear here when available.",
-  },
-  questions: {
-    label: "Questions",
-    title: "Assessment questions",
-    description: "Access assessment question management.",
-    placeholder: "Question management tools will appear here when available.",
-  },
-};
+const adminPageKeys = ["dashboard", "intelligence", "results", "questions"];
 
 export default function AdminPanel() {
+  const { t } = useI18n();
   const [activePage, setActivePage] = useState("dashboard");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
-  const currentPage = adminPages[activePage];
 
   const loadDashboardStats = useCallback(async (signal) => {
     setDashboardLoading(true);
@@ -73,15 +46,15 @@ export default function AdminPanel() {
     <div className="admin-layout">
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <p className="admin-eyebrow">Administration</p>
-          <h1 className="admin-brand-title">Admin Panel</h1>
+          <p className="admin-eyebrow">{t("admin.panel.eyebrow")}</p>
+          <h1 className="admin-brand-title">{t("admin.panel.title")}</h1>
           <p className="admin-brand-description">
-            Manage assessments and AI analytics from one place.
+            {t("admin.panel.description")}
           </p>
         </div>
 
-        <nav className="admin-nav" aria-label="Admin navigation">
-          {Object.entries(adminPages).map(([pageKey, page]) => (
+        <nav className="admin-nav" aria-label={t("admin.panel.navAria")}>
+          {adminPageKeys.map((pageKey) => (
             <button
               key={pageKey}
               type="button"
@@ -92,31 +65,38 @@ export default function AdminPanel() {
               aria-controls="admin-page-content"
               onClick={() => setActivePage(pageKey)}
             >
-              {page.label}
+              {t(`admin.pages.${pageKey}.label`)}
             </button>
           ))}
         </nav>
 
         <a className="admin-back-link" href="/">
-          Back to assessment
+          {t("admin.panel.backLink")}
         </a>
       </aside>
 
       <main className="admin-main">
         <header className="admin-page-header">
           <div>
-            <p className="admin-eyebrow">Admin workspace</p>
-            <h2 className="admin-page-title">{currentPage.title}</h2>
-            <p className="admin-page-description">{currentPage.description}</p>
+            <p className="admin-eyebrow">{t("admin.panel.workspaceEyebrow")}</p>
+            <h2 className="admin-page-title">
+              {t(`admin.pages.${activePage}.title`)}
+            </h2>
+            <p className="admin-page-description">
+              {t(`admin.pages.${activePage}.description`)}
+            </p>
           </div>
 
-          <span className="admin-preview-badge">
-            {activePage === "intelligence"
-              ? "Pre-ML Engine"
-              : activePage === "dashboard" && dashboardStats
-                ? "Live data"
-                : "Admin workspace"}
-          </span>
+          <div className="admin-page-header-actions">
+            <span className="admin-preview-badge">
+              {activePage === "intelligence"
+                ? t("admin.panel.badgePreMl")
+                : activePage === "dashboard" && dashboardStats
+                  ? t("admin.panel.badgeLive")
+                  : t("admin.panel.badgeWorkspace")}
+            </span>
+            <LanguageSelector />
+          </div>
         </header>
 
         <section
@@ -124,7 +104,7 @@ export default function AdminPanel() {
           className="admin-content-card"
           aria-labelledby="admin-content-title"
         >
-          <h3 id="admin-content-title">{currentPage.label}</h3>
+          <h3 id="admin-content-title">{t(`admin.pages.${activePage}.label`)}</h3>
 
           {activePage === "dashboard" ? (
             <AdminDashboard
@@ -137,11 +117,10 @@ export default function AdminPanel() {
             <IntelligenceDashboard />
           ) : (
             <>
-              <p>{currentPage.placeholder}</p>
+              <p>{t(`admin.pages.${activePage}.placeholder`)}</p>
 
               <div className="admin-placeholder-note">
-                Backend data is not connected yet. No live records are
-                displayed.
+                {t("admin.panel.placeholderNote")}
               </div>
             </>
           )}

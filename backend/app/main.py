@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
 import app.models  # noqa: F401
-from app.routers import analytics, db_health, sessions
+from app.routers import analytics, assessments, db_health, sessions
 from app.routers.visits import router as visits_router
 
 app = FastAPI(title="CCLAS API")
@@ -24,16 +24,25 @@ async def request_validation_handler(
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
+origins = list(
+    {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        *settings.cors_list,
+    }
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_list,
-    allow_methods=["GET", "POST", "PUT"],
-    allow_headers=["Content-Type", "X-Dashboard-Pin"],
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.include_router(db_health.router)
 app.include_router(analytics.router)
 app.include_router(analytics.router, prefix="/api")
-# app.include_router(assessments.router)  # Desactivado: flujo legado reemplazado por /api/sessions
+app.include_router(assessments.router)
 app.include_router(sessions.router)
 app.include_router(visits_router)
 
