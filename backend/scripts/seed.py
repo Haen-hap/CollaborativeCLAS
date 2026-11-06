@@ -4,6 +4,7 @@ Uso (desde backend/, con la BD migrada):
     python -m scripts.seed
 """
 from app.core.database import SessionLocal
+from app.models.access_points import AccessPoint, AccessPointType
 from app.models.zone import Kiosk, Zone
 
 ZONES: list[dict[str, str]] = [
@@ -56,12 +57,25 @@ KIOSKS: list[dict[str, str | None]] = [
 def main() -> None:
     db = SessionLocal()
     try:
+        db.merge(Zone(code="DECLINED", name="Location declined"))
         for zone in ZONES:
             db.merge(Zone(**zone))
         for kiosk in KIOSKS:
             db.merge(Kiosk(**kiosk))
+            ap_type = (
+                AccessPointType.WEB
+                if kiosk["code"] == "DIRECT_WEB"
+                else AccessPointType.KIOSK
+            )
+            db.merge(
+                AccessPoint(
+                    code=kiosk["code"],
+                    name=kiosk["name"],
+                    type=ap_type,
+                )
+            )
         db.commit()
-        print(f"Zonas: {len(ZONES)} · Kioscos: {len(KIOSKS)}")
+        print(f"Zonas: {len(ZONES)} · Kioscos/AccessPoints: {len(KIOSKS)}")
     except Exception:
         db.rollback()
         raise

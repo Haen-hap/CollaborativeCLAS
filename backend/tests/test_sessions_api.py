@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.core.settings import settings
 from app.main import app
-from app.models import GameSession
+from app.models.assessment_results import AssessmentResult
+from app.models.assessment_session import AssessmentSession
 from tests.helpers import valid
 
 
@@ -27,8 +28,8 @@ def test_server_recalculates_total_and_classification(client):
 def test_post_is_idempotent_by_session_id(client, db):
     assert client.post("/api/sessions", json=valid()).status_code == 201
     assert client.post("/api/sessions", json=valid(c4_cybersecurity_score=3)).status_code == 200
-    assert db.query(GameSession).count() == 1
-    assert db.get(GameSession, "SES-TEST-1").total_literacy_score == 6
+    assert db.query(AssessmentSession).count() == 1
+    assert db.query(AssessmentResult).one().total_literacy_score == 6
 
 
 @pytest.mark.parametrize("changes", [

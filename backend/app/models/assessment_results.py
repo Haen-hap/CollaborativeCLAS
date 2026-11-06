@@ -13,9 +13,12 @@ class LiteracyClassification(str, enum.Enum):
 
 class AssessmentResult(Base):
     __tablename__ = "assessment_results"
-    id = Column(Integer, primary_key=True, index=True)
-    submission_id = Column(Integer, ForeignKey("assessment_submissions.id"))
-    session_id = Column(Integer, ForeignKey("assessment_sessions.session_id"))
+    session_id = Column(
+        Integer,
+        ForeignKey("assessment_sessions.session_id"),
+        primary_key=True,
+        nullable=False,
+    )
     c1_visual_signs_score = Column(SmallInteger, nullable=False, default=0)
     c2_sentence_comprehension_score = Column(SmallInteger, nullable=False, default=0)
     c3_mobile_icons_score = Column(SmallInteger, nullable=False, default=0)
@@ -30,8 +33,3 @@ class AssessmentResult(Base):
         default=LiteracyClassification.RED,
     )
     session = relationship("AssessmentSession", back_populates="result", uselist=False)
-    literacy_score = Column(Integer)
-    total_score = Column(Integer)
-    digital_score = Column(Integer)
-    priority_level = Column(Integer)
-    submission = relationship("AssessmentSubmission", back_populates="result")

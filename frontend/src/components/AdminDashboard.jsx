@@ -1,9 +1,10 @@
+import { useI18n } from "../utils/i18n";
 import "./AdminDashboard.css";
 
 const classificationOptions = [
-  { key: "red", label: "Red", className: "red" },
-  { key: "yellow", label: "Yellow", className: "yellow" },
-  { key: "green", label: "Green", className: "green" },
+  { key: "red", labelKey: "admin.dashboard.class.red", className: "red" },
+  { key: "yellow", labelKey: "admin.dashboard.class.yellow", className: "yellow" },
+  { key: "green", labelKey: "admin.dashboard.class.green", className: "green" },
 ];
 
 export default function AdminDashboard({
@@ -12,11 +13,13 @@ export default function AdminDashboard({
   error,
   onRefresh,
 }) {
+  const { t } = useI18n();
+
   if (isLoading) {
     return (
       <div className="admin-dashboard" aria-busy="true">
         <p className="admin-dashboard-state" role="status">
-          Loading dashboard statistics…
+          {t("admin.dashboard.loading")}
         </p>
       </div>
     );
@@ -26,9 +29,9 @@ export default function AdminDashboard({
     return (
       <div className="admin-dashboard">
         <div className="admin-dashboard-error" role="alert">
-          <p>Could not load live dashboard statistics: {error}</p>
+          <p>{t("admin.dashboard.error", { error })}</p>
           <button className="admin-dashboard-refresh" onClick={onRefresh}>
-            Try again
+            {t("admin.dashboard.tryAgain")}
           </button>
         </div>
       </div>
@@ -41,6 +44,7 @@ export default function AdminDashboard({
 
   const distribution = classificationOptions.map((option) => ({
     ...option,
+    label: t(option.labelKey),
     count: stats.classification_distribution[option.key],
     percentage:
       stats.total_submissions > 0
@@ -55,56 +59,60 @@ export default function AdminDashboard({
       ? distribution.filter((category) => category.count === highestCount)
       : [];
   const mostCommonClassification =
-    leaders.length === 0 ? "No data" : leaders.map((item) => item.label).join(" / ");
+    leaders.length === 0
+      ? t("admin.dashboard.noData")
+      : leaders.map((item) => item.label).join(" / ");
 
   return (
     <div className="admin-dashboard">
       <div className="admin-dashboard-toolbar">
         <p className="admin-dashboard-scope">
-          Statistics include completed assessments with saved results only.
+          {t("admin.dashboard.scope")}
         </p>
         <button
           className="admin-dashboard-refresh"
           type="button"
           onClick={onRefresh}
         >
-          Refresh data
+          {t("admin.dashboard.refresh")}
         </button>
       </div>
 
       <section
         className="admin-dashboard-stats"
-        aria-label="Assessment summary statistics"
+        aria-label={t("admin.dashboard.statsAria")}
       >
         <article className="admin-stat-card">
-          <h3 className="admin-stat-label">Total submissions</h3>
+          <h3 className="admin-stat-label">{t("admin.dashboard.totalSubmissions")}</h3>
           <p className="admin-stat-value">{stats.total_submissions}</p>
           <p className="admin-stat-help">
-            Completed assessments with saved results.
+            {t("admin.dashboard.totalSubmissionsHelp")}
           </p>
         </article>
 
         <article className="admin-stat-card">
-          <h3 className="admin-stat-label">Average score</h3>
+          <h3 className="admin-stat-label">{t("admin.dashboard.averageScore")}</h3>
           <p className="admin-stat-value">
             {stats.average_score_percentage === null
               ? "—"
               : `${stats.average_score_percentage.toFixed(1)}%`}
           </p>
           <p className="admin-stat-help">
-            Mean percentage correct, based on each assessment’s question count.
+            {t("admin.dashboard.averageScoreHelp")}
           </p>
         </article>
 
         <article className="admin-stat-card">
-          <h3 className="admin-stat-label">Most common classification</h3>
+          <h3 className="admin-stat-label">{t("admin.dashboard.mostCommon")}</h3>
           <p className="admin-stat-value admin-stat-classification">
             {mostCommonClassification}
           </p>
           <p className="admin-stat-help">
             {leaders.length === 0
-              ? "No completed results to classify yet."
-              : `${highestCount} completed ${highestCount === 1 ? "assessment" : "assessments"}.`}
+              ? t("admin.dashboard.noCompletedToClassify")
+              : highestCount === 1
+                ? t("admin.dashboard.completedCountOne")
+                : t("admin.dashboard.completedCountMany", { count: highestCount })}
           </p>
         </article>
       </section>
@@ -114,13 +122,13 @@ export default function AdminDashboard({
         aria-labelledby="admin-distribution-title"
       >
         <header className="admin-distribution-header">
-          <h3 id="admin-distribution-title">Classification distribution</h3>
-          <p>Counts and percentages of completed assessments with saved results.</p>
+          <h3 id="admin-distribution-title">{t("admin.dashboard.distributionTitle")}</h3>
+          <p>{t("admin.dashboard.distributionSubtitle")}</p>
         </header>
 
         {stats.total_submissions === 0 ? (
           <p className="admin-dashboard-empty" role="status">
-            No completed assessments are available yet.
+            {t("admin.dashboard.empty")}
           </p>
         ) : (
           <ul className="admin-distribution-list">

@@ -9,15 +9,14 @@ from app.models.assessment_session import (
     SchoolingLevel,
     WorkStatus,
 )
-from app.models.game_session import GameSession
 from app.models.question_options import QuestionOption
 from app.models.questions import Question
 from app.models.session_answers import SessionAnswer
 from app.models.session_questions import SessionQuestion
-from app.models.zone import Kiosk, Zone
+from app.models.zone import Zone
 
 
-def create_session(session_id, access_point_code, zone_code, status):
+def create_session(session_id, access_point_code, zone_code, status, duration=0):
     return AssessmentSession(
         session_id=session_id,
         access_point_code=access_point_code,
@@ -26,9 +25,9 @@ def create_session(session_id, access_point_code, zone_code, status):
         work_status=WorkStatus.STUDENT,
         schooling_level=SchoolingLevel.TERTIARY,
         zone_code=zone_code,
-        location_declined=False,
+        location_declined=(zone_code == "DECLINED"),
         completion_status=status,
-        duration_seconds=0,
+        duration_seconds=duration,
     )
 
 
@@ -161,55 +160,24 @@ def test_summary_aggregates_sessions_results_and_classification_distribution(
 
 def test_summary_aggregates_game_sessions(db_session, test_client):
     zone = Zone(code="Z001", name="Curundú")
-    kiosk = Kiosk(code="DIRECT_WEB", name="Acceso directo web", zone_code="Z001")
-    db_session.add_all([zone, kiosk])
+    access_point = AccessPoint(
+        code="DIRECT_WEB",
+        name="Acceso directo web",
+        type=AccessPointType.WEB,
+    )
+    db_session.add_all([zone, access_point])
     db_session.flush()
     db_session.add_all(
         [
-            GameSession(
-                session_id="SES-GAME-1",
-                kiosk_id="DIRECT_WEB",
-                origin="UNKNOWN",
-                assisted_mode=False,
-                age_range="25_34",
-                work_status="FORMAL",
-                schooling_level="SECONDARY_COMPLETE",
-                zone_code="Z001",
-                c1_visual_signs_score=2,
-                c2_sentence_comprehension_score=2,
-                c3_mobile_icons_score=2,
-                c4_cybersecurity_score=3,
-                total_literacy_score=9,
-                internal_zone_classification="GREEN",
-                completion_status="COMPLETED",
-                last_step="step_17",
-                duration_seconds=80,
-                reward_issued=True,
-                iot_trigger_type="WIFI_CREDENTIAL",
-                repeat_device=False,
-            ),
-            GameSession(
-                session_id="SES-GAME-2",
-                kiosk_id="DIRECT_WEB",
-                origin="UNKNOWN",
-                assisted_mode=False,
-                age_range="35_49",
-                work_status="INFORMAL",
-                schooling_level="PRIMARY_COMPLETE",
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=1,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=2,
-                total_literacy_score=5,
-                internal_zone_classification="YELLOW",
-                completion_status="COMPLETED",
-                last_step="step_17",
-                duration_seconds=90,
-                reward_issued=False,
-                iot_trigger_type="NONE",
-                repeat_device=True,
-            ),
+            create_session(201, "DIRECT_WEB", "Z001", CompletionStatus.COMPLETED, 80),
+            create_session(202, "DIRECT_WEB", "Z001", CompletionStatus.COMPLETED, 90),
+        ]
+    )
+    db_session.flush()
+    db_session.add_all(
+        [
+            create_result(201, (2, 2, 2, 3), LiteracyClassification.GREEN),
+            create_result(202, (1, 1, 1, 2), LiteracyClassification.YELLOW),
         ]
     )
     db_session.commit()
@@ -309,74 +277,31 @@ def test_zone_vulnerability_ranking_orders_by_red_percentage_with_window_rank(
 ):
     z1 = Zone(code="Z001", name="Curundú")
     z2 = Zone(code="Z002", name="Bethania")
-    kiosk = Kiosk(code="PTYK001", name="Smart Kiosk Curundú", zone_code="Z001")
-    db_session.add_all([z1, z2, kiosk])
+    ap = AccessPoint(
+        code="PTYK001",
+        name="Smart Kiosk Curundú",
+        type=AccessPointType.KIOSK,
+    )
+    db_session.add_all([z1, z2, ap])
     db_session.flush()
 
     db_session.add_all(
         [
+            create_session(301, "PTYK001", "Z001", CompletionStatus.COMPLETED, 60),
+            create_session(302, "PTYK001", "Z001", CompletionStatus.COMPLETED, 70),
+            create_session(303, "PTYK001", "Z002", CompletionStatus.COMPLETED, 65),
+            create_session(304, "PTYK001", "Z002", CompletionStatus.COMPLETED, 80),
+        ]
+    )
+    db_session.flush()
+    db_session.add_all(
+        [
             # Z001: 2 RED de 2 sesiones (100% crítico -> rank 1)
-            GameSession(
-                session_id="SES-RANK-1",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=0,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=0,
-                total_literacy_score=2,
-                internal_zone_classification="RED",
-                completion_status="COMPLETED",
-                duration_seconds=60,
-            ),
-            GameSession(
-                session_id="SES-RANK-2",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=1,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=0,
-                total_literacy_score=3,
-                internal_zone_classification="RED",
-                completion_status="COMPLETED",
-                duration_seconds=70,
-            ),
+            create_result(301, (1, 0, 1, 0), LiteracyClassification.RED),
+            create_result(302, (1, 1, 1, 0), LiteracyClassification.RED),
             # Z002: 1 RED y 1 GREEN (50% crítico -> rank 2)
-            GameSession(
-                session_id="SES-RANK-3",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z002",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=0,
-                c3_mobile_icons_score=0,
-                c4_cybersecurity_score=1,
-                total_literacy_score=2,
-                internal_zone_classification="RED",
-                completion_status="COMPLETED",
-                duration_seconds=65,
-            ),
-            GameSession(
-                session_id="SES-RANK-4",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z002",
-                c1_visual_signs_score=2,
-                c2_sentence_comprehension_score=2,
-                c3_mobile_icons_score=2,
-                c4_cybersecurity_score=2,
-                total_literacy_score=8,
-                internal_zone_classification="GREEN",
-                completion_status="COMPLETED",
-                duration_seconds=80,
-            ),
+            create_result(303, (1, 0, 0, 1), LiteracyClassification.RED),
+            create_result(304, (2, 2, 2, 2), LiteracyClassification.GREEN),
         ]
     )
     db_session.commit()
@@ -398,75 +323,36 @@ def test_kiosk_c4_dispersal_identifies_high_variance_outliers(
     db_session, test_client
 ):
     z1 = Zone(code="Z001", name="Curundú")
-    k1 = Kiosk(code="PTYK001", name="Smart Kiosk Curundú", zone_code="Z001")
-    k2 = Kiosk(code="PTYK002", name="Smart Kiosk Bethania", zone_code="Z001")
-    db_session.add_all([z1, k1, k2])
+    ap1 = AccessPoint(
+        code="PTYK001",
+        name="Smart Kiosk Curundú",
+        type=AccessPointType.KIOSK,
+    )
+    ap2 = AccessPoint(
+        code="PTYK002",
+        name="Smart Kiosk Bethania",
+        type=AccessPointType.KIOSK,
+    )
+    db_session.add_all([z1, ap1, ap2])
     db_session.flush()
 
     db_session.add_all(
         [
+            create_session(401, "PTYK001", "Z001", CompletionStatus.COMPLETED, 50),
+            create_session(402, "PTYK001", "Z001", CompletionStatus.COMPLETED, 110),
+            create_session(403, "PTYK002", "Z001", CompletionStatus.COMPLETED, 75),
+            create_session(404, "PTYK002", "Z001", CompletionStatus.COMPLETED, 75),
+        ]
+    )
+    db_session.flush()
+    db_session.add_all(
+        [
             # PTYK001: puntajes C4 polarizados (0 y 3) -> alta desviación estándar (1.5 -> outlier)
-            GameSession(
-                session_id="SES-DISP-1",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=1,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=0,
-                total_literacy_score=3,
-                internal_zone_classification="RED",
-                completion_status="COMPLETED",
-                duration_seconds=50,
-            ),
-            GameSession(
-                session_id="SES-DISP-2",
-                kiosk_id="PTYK001",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=2,
-                c2_sentence_comprehension_score=2,
-                c3_mobile_icons_score=2,
-                c4_cybersecurity_score=3,
-                total_literacy_score=9,
-                internal_zone_classification="GREEN",
-                completion_status="COMPLETED",
-                duration_seconds=110,
-            ),
+            create_result(401, (1, 1, 1, 0), LiteracyClassification.RED),
+            create_result(402, (2, 2, 2, 3), LiteracyClassification.GREEN),
             # PTYK002: puntajes C4 uniformes (2 y 2) -> desviación estándar 0.0
-            GameSession(
-                session_id="SES-DISP-3",
-                kiosk_id="PTYK002",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=1,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=2,
-                total_literacy_score=5,
-                internal_zone_classification="YELLOW",
-                completion_status="COMPLETED",
-                duration_seconds=75,
-            ),
-            GameSession(
-                session_id="SES-DISP-4",
-                kiosk_id="PTYK002",
-                origin="KIOSK",
-                assisted_mode=False,
-                zone_code="Z001",
-                c1_visual_signs_score=1,
-                c2_sentence_comprehension_score=1,
-                c3_mobile_icons_score=1,
-                c4_cybersecurity_score=2,
-                total_literacy_score=5,
-                internal_zone_classification="YELLOW",
-                completion_status="COMPLETED",
-                duration_seconds=75,
-            ),
+            create_result(403, (1, 1, 1, 2), LiteracyClassification.YELLOW),
+            create_result(404, (1, 1, 1, 2), LiteracyClassification.YELLOW),
         ]
     )
     db_session.commit()

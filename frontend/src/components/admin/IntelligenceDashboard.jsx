@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getKioskC4Dispersal, getVulnerabilityRanking } from "../../api/api";
+import { useI18n } from "../../utils/i18n";
 import "./IntelligenceDashboard.css";
 
 const FALLBACK_RANKING = {
@@ -116,16 +117,22 @@ const FALLBACK_DISPERSAL = {
   ],
 };
 
-export default function IntelligenceDashboard({ forceSimulation = false }) {
+function consistencyLabel(stddev, t) {
+  const value = Number(stddev || 0);
+  if (value === 0) return t("intelligence.consistency.uniform");
+  if (value < 1.0) return t("intelligence.consistency.consistent");
+  return t("intelligence.consistency.highVariation");
+}
+
+export default function IntelligenceDashboard({
+  forceSimulation = false,
+  refreshTrigger = 0,
+}) {
+  const { t } = useI18n();
   const [rankingData, setRankingData] = useState(FALLBACK_RANKING);
   const [dispersalData, setDispersalData] = useState(FALLBACK_DISPERSAL);
-  const [isLive, setIsLive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
 
   const fetchIntelligenceData = useCallback(async (signal) => {
-    setLoading(true);
-    setErrorMsg("");
     try {
       const [rankingRes, dispersalRes] = await Promise.all([
         getVulnerabilityRanking({ signal }),
@@ -138,22 +145,14 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
       if (hasZones || hasKiosks) {
         setRankingData(hasZones ? rankingRes : FALLBACK_RANKING);
         setDispersalData(hasKiosks ? dispersalRes : FALLBACK_DISPERSAL);
-        setIsLive(true);
       } else {
         setRankingData(FALLBACK_RANKING);
         setDispersalData(FALLBACK_DISPERSAL);
-        setIsLive(false);
       }
     } catch (error) {
       if (error.name !== "AbortError") {
-        setErrorMsg(error.message || "Error consultando endpoints Pre-ML");
         setRankingData(FALLBACK_RANKING);
         setDispersalData(FALLBACK_DISPERSAL);
-        setIsLive(false);
-      }
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
       }
     }
   }, []);
@@ -162,13 +161,12 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
     if (forceSimulation) {
       setRankingData(FALLBACK_RANKING);
       setDispersalData(FALLBACK_DISPERSAL);
-      setIsLive(false);
       return undefined;
     }
     const controller = new AbortController();
     fetchIntelligenceData(controller.signal);
     return () => controller.abort();
-  }, [fetchIntelligenceData, forceSimulation]);
+  }, [fetchIntelligenceData, forceSimulation, refreshTrigger]);
 
   const zones = rankingData?.zones || [];
   const kiosks = dispersalData?.kiosks || [];
@@ -186,7 +184,7 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
       return {
         tone: "neutral",
         label: "",
-        text: "Sin registros territoriales suficientes para estimar el índice de vulnerabilidad crítica.",
+        text: t("intelligence.alert.empty"),
       };
     }
     const leadIndex = Number(leadZone.critical_literacy_index || 0);
@@ -199,65 +197,39 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
       return {
         tone: "neutral",
         label: "",
-        text: `Sin sesiones críticas registradas en el corte actual. La zona con menor promedio relativo es ${lowestAverageZone.zone_name} (${Number(lowestAverageZone.avg_total_score || 0).toFixed(1)} / 9); se sugiere seguimiento preventivo.`,
+        text: t("intelligence.alert.noCritical", {
+          zone: lowestAverageZone.zone_name,
+          score: Number(lowestAverageZone.avg_total_score || 0).toFixed(1),
+        }),
       };
     }
     return {
       tone: "critical",
-      label: "Atención prioritaria:",
-      text: `La zona ${leadZone.zone_name} (${leadZone.zone_code}) tiene un índice crítico de ${leadIndex.toFixed(1)}%. Se sugiere despliegue urgente de campaña educativa de Ciberseguridad.`,
+      label: t("intelligence.alert.criticalLabel"),
+      text: t("intelligence.alert.criticalText", {
+        zone: leadZone.zone_name,
+        code: leadZone.zone_code,
+        index: leadIndex.toFixed(1),
+      }),
     };
-  }, [rankingData]);
+  }, [rankingData, t]);
 
   return (
-    <div className="ai-dashboard" aria-label="Panel de análisis e inteligencia">
-      <div className="ai-subheader">
-        <div className="ai-subheader-status">
-          <span className={`ai-status ${isLive ? "is-live" : "is-fallback"}`}>
-            <span className="ai-dot" aria-hidden="true" />
-            {isLive ? "Datos conectados" : "Datos de demostración"}
-          </span>
-          {loading && <span>Sincronizando…</span>}
-          {errorMsg && (
-            <span className="ai-subheader-warning">
-              No fue posible sincronizar; se muestra la muestra base.
-            </span>
-          )}
-        </div>
-        <div className="ai-status-actions">
-          <button
-            type="button"
-            className="ai-btn"
-            onClick={() => fetchIntelligenceData()}
-          >
-            Sincronizar
-          </button>
-          <button
-            type="button"
-            className="ai-btn"
-            onClick={() => {
-              setRankingData(FALLBACK_RANKING);
-              setDispersalData(FALLBACK_DISPERSAL);
-              setIsLive(false);
-            }}
-          >
-            Cargar muestra base
-          </button>
-        </div>
-      </div>
-
+    <div className="ai-dashboard" aria-label={t("intelligence.dashboardAria")}>
       {/* Resumen operativo: hallazgos prioritarios y recomendaciones */}
       <section
         className={`ai-insights-card ${primaryAiAlert.tone === "critical" ? "is-critical" : "is-neutral"}`}
-        aria-label="Hallazgos prioritarios y recomendaciones"
+        aria-label={t("intelligence.insights.aria")}
       >
         <div className="ai-insights-header">
           <div>
-            <p className="ai-eyebrow">Resumen operativo</p>
-            <h2>Hallazgos prioritarios y recomendaciones</h2>
+            <p className="ai-eyebrow">{t("intelligence.insights.eyebrow")}</p>
+            <h2>{t("intelligence.insights.title")}</h2>
           </div>
           <span className="ai-metric-pill">
-            Índice crítico global: {Number(rankingData?.global_avg_critical_index || 0).toFixed(1)}%
+            {t("intelligence.insights.globalIndex", {
+              index: Number(rankingData?.global_avg_critical_index || 0).toFixed(1),
+            })}
           </span>
         </div>
 
@@ -272,52 +244,64 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
               <strong>
                 <span className="ai-dot is-warning" aria-hidden="true" />
                 {outlierKiosks.length > 0
-                  ? "Variación detectada en punto de acceso"
-                  : "Punto de acceso con mayor dispersión"}{" "}
+                  ? t("intelligence.kioskInsight.outlierTitle")
+                  : t("intelligence.kioskInsight.topTitle")}{" "}
                 {topDispersalKiosk.kiosk_id} ({topDispersalKiosk.kiosk_name})
               </strong>
-              Presenta una desviación estándar en Ciberseguridad (C4) de{" "}
-              <b>σ = {Number(topDispersalKiosk.stddev_c4_score).toFixed(2)}</b> (rango intercuartílico IQR ={" "}
-              {Number(topDispersalKiosk.iqr_c4_score).toFixed(1)}).
-              {outlierKiosks.length > 0 &&
-                " Se recomienda activar modo asistido en este punto para nivelar brechas digitales."}
+              {t("intelligence.kioskInsight.bodyPrefix")}
+              <b>
+                ±{Number(topDispersalKiosk.stddev_c4_score).toFixed(2)} pts (
+                {consistencyLabel(topDispersalKiosk.stddev_c4_score, t)})
+              </b>
+              {t("intelligence.kioskInsight.bodyMiddle")}
+              <b>
+                {t("intelligence.kioskInsight.bodyRange", {
+                  p25: Number(topDispersalKiosk.p25_c4_score).toFixed(0),
+                  p75: Number(topDispersalKiosk.p75_c4_score).toFixed(0),
+                })}
+              </b>.
+              {outlierKiosks.length > 0 && t("intelligence.kioskInsight.assistedRec")}
             </li>
           )}
           <li>
             <strong>
               <span className="ai-dot is-info" aria-hidden="true" />
-              Variabilidad en competencia C4 (Ciberseguridad)
+              {t("intelligence.c4Summary.title")}
             </strong>
-            Se detectaron <b>{outlierKiosks.length}</b> punto(s) de acceso con alta varianza o desviación
-            respecto a la media global ({Number(dispersalData?.global_avg_c4_score || 0).toFixed(2)} / 3.0).
+            {t("intelligence.c4Summary.bodyPrefix")}
+            <b>{outlierKiosks.length}</b>
+            {t("intelligence.c4Summary.bodySuffix", {
+              avg: Number(dispersalData?.global_avg_c4_score || 0).toFixed(2),
+            })}
           </li>
         </ul>
       </section>
 
       <div className="ai-grid">
         {/* Sección 1: Prioridad territorial por zona */}
-        <article className="ai-panel" aria-label="Ranking de vulnerabilidad por zona">
+        <article className="ai-panel" aria-label={t("intelligence.zones.aria")}>
           <div className="ai-panel-header">
             <div>
-              <p className="ai-eyebrow">Índice de vulnerabilidad territorial</p>
-              <h2>Prioridad territorial por zona</h2>
+              <p className="ai-eyebrow">{t("intelligence.zones.eyebrow")}</p>
+              <h2>{t("intelligence.zones.title")}</h2>
               <p className="ai-panel-subtitle">
-                Clasificación según porcentaje de sesiones en categoría crítica. La zona líder solo se resalta
-                en rojo cuando existen sesiones críticas.
+                {t("intelligence.zones.subtitle")}
               </p>
             </div>
-            <span className="ai-metric-pill">{zones.length} zonas evaluadas</span>
+            <span className="ai-metric-pill">
+              {t("intelligence.zones.countPill", { count: zones.length })}
+            </span>
           </div>
 
           <div className="ai-table-wrap">
             <table className="ai-table">
               <thead>
                 <tr>
-                  <th>Rango</th>
-                  <th>Zona</th>
-                  <th>Sesiones (crít. / ref. / aut.)</th>
-                  <th>Promedio</th>
-                  <th>Índice crítico (% sesiones críticas)</th>
+                  <th>{t("intelligence.zones.colRank")}</th>
+                  <th>{t("intelligence.zones.colZone")}</th>
+                  <th>{t("intelligence.zones.colSessions")}</th>
+                  <th>{t("intelligence.zones.colAvgScore")}</th>
+                  <th>{t("intelligence.zones.colCriticalIndex")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -352,16 +336,22 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
                             <span
                               className={`ai-tag ${isCritical ? "is-danger" : "is-neutral"}`}
                             >
-                              {isCritical ? "PRIORIDAD" : "SEGUIMIENTO"}
+                              {isCritical
+                                ? t("intelligence.zones.tagPriority")
+                                : t("intelligence.zones.tagFollowUp")}
                             </span>
                           )}
                         </strong>
-                        <span>Código {zone.zone_code}</span>
+                        <span>{t("intelligence.zones.codeLabel", { code: zone.zone_code })}</span>
                       </td>
                       <td>
-                        {zone.total_sessions}{" "}
+                        <strong>{zone.total_sessions}</strong>{" "}
                         <small>
-                          ({zone.red_sessions} / {zone.yellow_sessions} / {zone.green_sessions})
+                          {t("intelligence.zones.breakdown", {
+                            red: zone.red_sessions,
+                            yellow: zone.yellow_sessions,
+                            green: zone.green_sessions,
+                          })}
                         </small>
                       </td>
                       <td>{Number(zone.avg_total_score || 0).toFixed(1)} / 9</td>
@@ -384,18 +374,20 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
           </div>
         </article>
 
-        {/* Sección 2: Dispersión y variabilidad C4 (matriz operativa) */}
-        <article className="ai-panel" aria-label="Dispersión y variabilidad en competencia C4">
+        {/* Sección 2: Desempeño y consistencia en Ciberseguridad por kiosco */}
+        <article className="ai-panel" aria-label={t("intelligence.kiosks.aria")}>
           <div className="ai-panel-header">
             <div>
-              <p className="ai-eyebrow">Distribución estadística por punto</p>
-              <h2>Dispersión y variabilidad por kiosco</h2>
+              <p className="ai-eyebrow">{t("intelligence.kiosks.eyebrow")}</p>
+              <h2>{t("intelligence.kiosks.title")}</h2>
               <p className="ai-panel-subtitle">
-                Desviación estándar (σ), rango intercuartílico (P25–P75) y duración en Ciberseguridad.
+                {t("intelligence.kiosks.subtitle")}
               </p>
             </div>
             <span className="ai-metric-pill">
-              Media C4: {Number(dispersalData?.global_avg_c4_score || 0).toFixed(2)} / 3
+              {t("intelligence.kiosks.avgPill", {
+                avg: Number(dispersalData?.global_avg_c4_score || 0).toFixed(2),
+              })}
             </span>
           </div>
 
@@ -403,12 +395,12 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
             <table className="ai-table ai-matrix">
               <thead>
                 <tr>
-                  <th>Punto de acceso</th>
-                  <th>Sesiones</th>
-                  <th>Media C4</th>
-                  <th>Dispersión (σ · IQR)</th>
-                  <th>Duración media</th>
-                  <th>Estado</th>
+                  <th>{t("intelligence.kiosks.colAccessPoint")}</th>
+                  <th>{t("intelligence.kiosks.colSessions")}</th>
+                  <th>{t("intelligence.kiosks.colAvgC4")}</th>
+                  <th>{t("intelligence.kiosks.colConsistency")}</th>
+                  <th>{t("intelligence.kiosks.colDuration")}</th>
+                  <th>{t("intelligence.kiosks.colStatus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -422,27 +414,41 @@ export default function IntelligenceDashboard({ forceSimulation = false }) {
                         #{kiosk.dispersal_rank} · {kiosk.kiosk_name}
                       </strong>
                       <span>
-                        ID: {kiosk.kiosk_id}
-                        {kiosk.zone_code ? ` · Zona ${kiosk.zone_code}` : " · Canal Web"}
+                        ID: {kiosk.kiosk_id} ·{" "}
+                        {kiosk.zone_code
+                          ? t("intelligence.kiosks.zoneChannel", { code: kiosk.zone_code })
+                          : t("intelligence.kiosks.webChannel")}
                       </span>
                     </td>
                     <td>{kiosk.total_sessions}</td>
-                    <td>{Number(kiosk.avg_c4_score).toFixed(2)} / 3</td>
+                    <td>{Number(kiosk.avg_c4_score).toFixed(2)} / 3 pts</td>
                     <td>
-                      <strong>σ {Number(kiosk.stddev_c4_score).toFixed(2)}</strong>
+                      <strong>
+                        {t("intelligence.kiosks.variationLine", {
+                          stddev: Number(kiosk.stddev_c4_score).toFixed(2),
+                          label: consistencyLabel(kiosk.stddev_c4_score, t),
+                        })}
+                      </strong>
                       <small>
-                        IQR {Number(kiosk.iqr_c4_score).toFixed(1)} · P25–P75 {kiosk.p25_c4_score}–{kiosk.p75_c4_score}
+                        {t("intelligence.kiosks.rangeLine", {
+                          p25: Number(kiosk.p25_c4_score).toFixed(0),
+                          p75: Number(kiosk.p75_c4_score).toFixed(0),
+                        })}
                       </small>
                     </td>
                     <td>
-                      {Math.round(kiosk.avg_duration_seconds)}s ±{" "}
-                      {Math.round(kiosk.stddev_duration_seconds)}s
+                      {t("intelligence.kiosks.durationValue", {
+                        avg: Math.round(kiosk.avg_duration_seconds),
+                        stddev: Math.round(kiosk.stddev_duration_seconds),
+                      })}
                     </td>
                     <td>
                       <span
                         className={`ai-tag ${kiosk.is_outlier ? "is-warning" : "is-success"}`}
                       >
-                        {kiosk.is_outlier ? "Revisar dispersión" : "Estable"}
+                        {kiosk.is_outlier
+                          ? t("intelligence.kiosks.statusReview")
+                          : t("intelligence.kiosks.statusStable")}
                       </span>
                     </td>
                   </tr>

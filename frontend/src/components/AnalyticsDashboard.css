@@ -71,12 +71,20 @@
   box-shadow: var(--gbm-shadow);
 }
 
+.analytics-gate-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
 .analytics-mark {
   display: grid;
   place-items: center;
   width: 52px;
   height: 52px;
-  margin-bottom: 26px;
+  margin-bottom: 0;
   border-radius: var(--gbm-radius-sub);
   background: var(--gbm-navy);
   color: var(--gbm-light);
@@ -243,13 +251,15 @@
 }
 
 /* Primary export actions (CSV / JSON) use the GBM cyan accent */
-.analytics-command-actions button[aria-label^="Exportar"] {
+.analytics-command-actions button.is-export,
+.analytics-command-actions button[aria-label^="Export"] {
   background: var(--gbm-cyan);
   border-color: var(--gbm-cyan);
   color: var(--gbm-light);
 }
 
-.analytics-command-actions button[aria-label^="Exportar"]:hover {
+.analytics-command-actions button.is-export:hover,
+.analytics-command-actions button[aria-label^="Export"]:hover {
   background: var(--gbm-cyan-hover);
   border-color: var(--gbm-cyan-hover);
 }

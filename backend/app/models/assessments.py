@@ -9,5 +9,4 @@ class Assessment(Base):
     description = Column(String)
     assessment_type = Column(String)
 
-    questions = relationship("Question", back_populates="assessment", cascade="all, delete-orphan")
     submissions = relationship("AssessmentSubmission", back_populates="assessment")

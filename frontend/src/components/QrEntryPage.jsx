@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { LanguageSelector, useI18n } from "../utils/i18n";
 import { buildQrMatrixGrid, drawMatrixGridToCanvas } from "../utils/qrCode";
 
 const EXPORT_FILENAME = "gbm-cclas-credential-qr.png";
@@ -11,6 +12,7 @@ function resolvePortalEndpoint() {
 }
 
 export default function QrEntryPage() {
+  const { t } = useI18n();
   const matrixCanvasRef = useRef(null);
   const portalEndpointUri = useMemo(() => resolvePortalEndpoint(), []);
 
@@ -27,10 +29,10 @@ export default function QrEntryPage() {
         isReady: false,
         moduleGrid: null,
         faultMessage:
-          synthesisFault?.message || "Unable to synthesize matrix.",
+          synthesisFault?.message || t("qr.faultDefault"),
       };
     }
-  }, [portalEndpointUri]);
+  }, [portalEndpointUri, t]);
 
   useEffect(() => {
     const surfaceNode = matrixCanvasRef.current;
@@ -100,20 +102,22 @@ export default function QrEntryPage() {
             <span className="gbm-brand-monogram">
               GBM<b>CCLAS</b>
             </span>
-            <span className="gbm-credential-badge">CREDENTIAL · QR</span>
+            <div className="gbm-credential-header-actions">
+              <span className="gbm-credential-badge">{t("qr.badge")}</span>
+              <LanguageSelector />
+            </div>
           </div>
           <p className="gbm-credential-kicker">
-            Punto de Acceso Comunitario · Smart Oasis
+            {t("qr.kicker")}
           </p>
           <h1 id="gbm-credential-heading" className="gbm-credential-title">
-            Pase de Ingreso Digital
+            {t("qr.title")}
           </h1>
         </header>
 
         <div className="gbm-credential-body">
           <p className="gbm-credential-summary">
-            Escanee este código desde la cámara del teléfono para iniciar la
-            evaluación sin necesidad de cuenta ni contraseña.
+            {t("qr.summary")}
           </p>
 
           <figure className="gbm-matrix-frame">
@@ -121,22 +125,22 @@ export default function QrEntryPage() {
               ref={matrixCanvasRef}
               className="gbm-matrix-canvas"
               role="img"
-              aria-label={`Código QR de acceso para ${portalEndpointUri}`}
+              aria-label={t("qr.canvasAria", { url: portalEndpointUri })}
             />
             {synthesisState.faultMessage ? (
               <figcaption className="gbm-matrix-fault" role="alert">
-                Error al generar la matriz: {synthesisState.faultMessage}
+                {t("qr.faultPrefix", { message: synthesisState.faultMessage })}
               </figcaption>
             ) : (
               <figcaption className="gbm-matrix-caption">
-                Codificación ISO/IEC 18004 · Nivel L
+                {t("qr.caption")}
               </figcaption>
             )}
           </figure>
 
           <dl className="gbm-credential-meta">
             <div className="gbm-meta-item">
-              <dt>Destino raíz</dt>
+              <dt>{t("qr.meta.rootLabel")}</dt>
               <dd>
                 <a className="gbm-endpoint-link" href={portalEndpointUri}>
                   {portalEndpointUri}
@@ -144,8 +148,8 @@ export default function QrEntryPage() {
               </dd>
             </div>
             <div className="gbm-meta-item">
-              <dt>Modo de entrada</dt>
-              <dd>Cero teclado · Anónimo (Ley 81)</dd>
+              <dt>{t("qr.meta.modeLabel")}</dt>
+              <dd>{t("qr.meta.modeValue")}</dd>
             </div>
           </dl>
         </div>
@@ -170,11 +174,10 @@ export default function QrEntryPage() {
             >
               <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
             </svg>
-            <span>Descargar credencial PNG</span>
+            <span>{t("qr.download")}</span>
           </button>
           <p className="gbm-network-hint">
-            Mantenga el teléfono y el servidor en la misma red Wi-Fi cuando
-            opere en entorno local de kiosco.
+            {t("qr.networkHint")}
           </p>
         </footer>
       </article>
