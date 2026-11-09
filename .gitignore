@@ -21,3 +21,8 @@ frontend/dist/
 
 # Legacy static frontend backup
 frontend-legacy/
+
+# Root-level (agregado por auditoría 2026-11-07)
+node_modules/
+dist/
+build/
