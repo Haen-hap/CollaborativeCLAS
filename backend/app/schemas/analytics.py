@@ -114,3 +114,13 @@ class KioskC4DispersalResponse(BaseModel):
 
     global_avg_c4_score: float = Field(ge=0, le=3)
     kiosks: list[KioskC4DispersalItem]
+
+
+class SimulateResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    inserted_sessions: int = Field(ge=0)
+    completed_sessions: int = Field(ge=0)
+    abandoned_sessions: int = Field(ge=0)
+    summary: LegacyAnalyticsSummaryResponse
+

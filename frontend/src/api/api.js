@@ -82,6 +82,31 @@ export async function getAnalyticsSummary() {
   return handleResponse(response, "Failed to load analytics summary");
 }
 
+export async function simulateAnalyticsSample(count = 50) {
+  const response = await fetch(
+    `${API_URL}/analytics/simulate?count=${encodeURIComponent(count)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+  return handleResponse(response, "Failed to simulate analytics sample");
+}
+
+export async function restoreAnalyticsData() {
+  const response = await fetch(`${API_URL}/analytics/restore`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return handleResponse(response, "Failed to restore live analytics data");
+}
+
+
+
 export async function getVulnerabilityRanking({ signal } = {}) {
   const response = await fetch(`${API_URL}/api/analytics/vulnerability-ranking`, {
     signal,

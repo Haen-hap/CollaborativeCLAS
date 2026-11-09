@@ -6,7 +6,11 @@ import {
   TileLayer,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { getAnalyticsSummary } from "../api/api";
+import {
+  getAnalyticsSummary,
+  restoreAnalyticsData,
+  simulateAnalyticsSample,
+} from "../api/api";
 import { LanguageSelector, useI18n } from "../utils/i18n";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import "./AnalyticsDashboard.css";
@@ -255,12 +259,12 @@ export default function AnalyticsDashboard() {
   const loadLiveData = async () => {
     setLoading(true);
     setApiError("");
-    setRefreshTrigger((prev) => prev + 1);
     try {
       const liveSummary = normalizeLiveSummary(await getAnalyticsSummary());
       setSummary(liveSummary);
       setZones(buildZoneRows(liveSummary, false));
       setSource(LIVE_SOURCE);
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       setApiError(error.message);
       const simulation = generateSimulation();
@@ -315,12 +319,43 @@ export default function AnalyticsDashboard() {
     }
   };
 
-  const handleSimulation = () => {
-    const simulation = generateSimulation();
-    setSummary(simulation.summary);
-    setZones(simulation.zones);
-    setSource(SIMULATED_SOURCE);
+  const handleSimulation = async () => {
+    setLoading(true);
     setApiError("");
+    try {
+      const result = await simulateAnalyticsSample(50);
+      const rawSummary = result?.summary || (await getAnalyticsSummary());
+      const liveSummary = normalizeLiveSummary(rawSummary);
+      setSummary(liveSummary);
+      setZones(buildZoneRows(liveSummary, false));
+      setSource(LIVE_SOURCE);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      setApiError(error.message);
+      const simulation = generateSimulation();
+      setSummary(simulation.summary);
+      setZones(simulation.zones);
+      setSource(SIMULATED_SOURCE);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setLoading(true);
+    setApiError("");
+    try {
+      const restored = await restoreAnalyticsData();
+      const liveSummary = normalizeLiveSummary(restored);
+      setSummary(liveSummary);
+      setZones(buildZoneRows(liveSummary, false));
+      setSource(LIVE_SOURCE);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      await loadLiveData();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleExportJson = () => {
@@ -383,7 +418,7 @@ export default function AnalyticsDashboard() {
       <main className="analytics-gate">
         <section className="analytics-gate-card">
           <div className="analytics-gate-top">
-            <div className="analytics-mark">CLAS</div>
+            <div className="analytics-mark">CCLAS</div>
             <LanguageSelector variant="light" />
           </div>
           <p className="analytics-eyebrow">{t("analytics.gate.eyebrow")}</p>
@@ -477,7 +512,7 @@ export default function AnalyticsDashboard() {
             </span>
             <div className="analytics-command-actions">
               <button type="button" onClick={handleSimulation} title={t("analytics.actions.simulateTitle")} aria-label={t("analytics.actions.simulateAria")}>{t("analytics.actions.simulate")}</button>
-              <button type="button" onClick={loadLiveData} title={t("analytics.actions.restoreTitle")} aria-label={t("analytics.actions.restoreAria")}>{t("analytics.actions.restore")}</button>
+              <button type="button" onClick={handleRestore} title={t("analytics.actions.restoreTitle")} aria-label={t("analytics.actions.restoreAria")}>{t("analytics.actions.restore")}</button>
               <button type="button" className="is-export" onClick={handleExportCsv} title={t("analytics.actions.csvTitle")} aria-label={t("analytics.actions.csvAria")}>CSV</button>
               <button type="button" className="is-export" onClick={handleExportJson} title={t("analytics.actions.jsonTitle")} aria-label={t("analytics.actions.jsonAria")}>JSON</button>
               <button type="button" className="is-lock" onClick={() => setAuthenticated(false)} title={t("analytics.actions.lockTitle")} aria-label={t("analytics.actions.lockAria")}>{t("analytics.actions.lock")}</button>

@@ -373,3 +373,41 @@ def test_kiosk_c4_dispersal_identifies_high_variance_outliers(
     assert second["stddev_c4_score"] == 0.0
     assert second["dispersal_rank"] == 2
     assert second["is_outlier"] is False
+
+
+def test_simulate_analytics_endpoint_inserts_sessions_and_updates_summary(
+    empty_analytics_api,
+):
+    response = empty_analytics_api.post("/analytics/simulate?count=50")
+    assert response.status_code == 201
+    data = response.json()
+    assert data["inserted_sessions"] == 50
+    assert data["completed_sessions"] == 42
+    assert data["abandoned_sessions"] == 8
+    assert data["summary"]["total_assessments"] == 50
+    assert data["summary"]["completed_assessments"] == 42
+    assert data["summary"]["abandoned_assessments"] == 8
+    assert data["summary"]["total_submissions"] == 42
+    assert data["summary"]["category_averages"] == {
+        "c1_visual_signs": 1.7,
+        "c2_sentence_comprehension": 1.7,
+        "c3_mobile_icons": 1.3,
+        "c4_cybersecurity": 1.4,
+    }
+    dist = {
+        item["classification"]: item["count"]
+        for item in data["summary"]["classification_distribution"]
+    }
+    assert dist == {"Red": 11, "Yellow": 19, "Green": 12}
+
+    # Re-running simulate is idempotent for the simulated cohort
+    second = empty_analytics_api.post("/analytics/simulate?count=50")
+    assert second.status_code == 201
+    assert second.json()["summary"]["total_assessments"] == 50
+
+    # Restoring removes the simulated cohort
+    restored = empty_analytics_api.post("/analytics/restore")
+    assert restored.status_code == 200
+    assert restored.json()["total_assessments"] == 0
+
+
