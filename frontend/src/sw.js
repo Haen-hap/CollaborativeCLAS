@@ -1,9 +1,12 @@
 import { clientsClaim } from 'workbox-core';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
-import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+
+self.skipWaiting();
+clientsClaim();
+cleanupOutdatedCaches();
 
 precacheAndRoute(self.__WB_MANIFEST);
-clientsClaim();
 
 const navigationHandler = createHandlerBoundToURL('/index.html');
 
@@ -13,4 +16,3 @@ registerRoute(
   }),
 );
 
-self.addEventListener('install', () => self.skipWaiting());

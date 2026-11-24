@@ -51,6 +51,7 @@ const gems = stage => {
 };
 
 // ---- progress persistence. This snapshot is separate from the API outbox and language preference.
+const ACTIVE_SESSION_TTL_MS = 15 * 60 * 1000;
 const readActiveProgress = () => {
   try { return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY) || "null"); }
   catch (error) { return null; }
@@ -60,6 +61,7 @@ const saveProgress = () => {
   if (!S || S.done || S.status !== "IN_PROGRESS" || !Array.isArray(steps)) return;
   const progress = {
     version: 1,
+    updatedAt: Date.now(),
     session: {
       id: S.id, d: S.d, sc: S.sc, tot: S.tot, status: S.status, done: S.done,
       answers: S.answers, completedQuestionIds: S.completedQuestionIds,
@@ -73,9 +75,20 @@ const restoreActiveProgress = () => {
   const saved = readActiveProgress();
   if (!saved || saved.version !== 1 || !saved.session || !Array.isArray(saved.steps) ||
       !saved.steps.length || !Number.isInteger(saved.currentQuestionId) || saved.currentQuestionId < 0 ||
-      saved.currentQuestionId > saved.steps.length) return false;
+      saved.currentQuestionId > saved.steps.length) {
+    clearActiveProgress();
+    return false;
+  }
+  const updatedAt = Number(saved.updatedAt);
+  if (!Number.isFinite(updatedAt) || Date.now() - updatedAt > ACTIVE_SESSION_TTL_MS) {
+    clearActiveProgress();
+    return false;
+  }
   const session = saved.session;
-  if (session.status !== "IN_PROGRESS" || !session.id || !session.d || !session.sc || !Array.isArray(session.tot)) return false;
+  if (session.status !== "IN_PROGRESS" || !session.id || !session.d || !session.sc || !Array.isArray(session.tot)) {
+    clearActiveProgress();
+    return false;
+  }
   S = {
     ...session,
     answers: Array.isArray(session.answers) ? session.answers : [],

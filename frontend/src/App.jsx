@@ -47,11 +47,11 @@ function App() {
     return <AnalyticsDashboard />;
   }
 
-  if (pathname === "/qr" || pathname === "/qr/") {
+  if (pathname.startsWith("/qr")) {
     return <QrEntryPage />;
   }
 
-  if (pathname === "/admin" || pathname === "/admin/") {
+  if (pathname.startsWith("/admin")) {
     return <AdminPanel />;
   }
 
@@ -61,6 +61,11 @@ function App() {
 
   if (pathname.startsWith("/register")) {
     return <RegisterView />;
+  }
+
+  if (typeof window !== "undefined" && pathname !== "/") {
+    window.location.replace("/");
+    return null;
   }
 
   const handleDemographicComplete = async (data) => {
