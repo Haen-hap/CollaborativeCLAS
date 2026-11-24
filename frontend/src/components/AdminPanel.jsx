@@ -1,17 +1,41 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
-import { getAdminDashboardStats } from "../api/api";
+import {
+  getAdminAuthToken,
+  getAdminDashboardStats,
+  getAdminMe,
+  getStoredAdminUser,
+  logoutAdmin,
+} from "../api/api";
 import { LanguageSelector, useI18n } from "../utils/i18n";
 
 const adminPageKeys = ["dashboard", "intelligence", "results", "questions"];
 
 export default function AdminPanel() {
   const { t } = useI18n();
+  const [currentUser, setCurrentUser] = useState(getStoredAdminUser);
+  const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminAuthToken()));
   const [activePage, setActivePage] = useState("dashboard");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
+
+  useEffect(() => {
+    const token = getAdminAuthToken();
+    if (!token) {
+      window.location.href = "/login?next=/admin";
+      return;
+    }
+    getAdminMe()
+      .then((user) => {
+        setCurrentUser(user);
+        setAuthenticated(true);
+      })
+      .catch(() => {
+        window.location.href = "/login?next=/admin";
+      });
+  }, []);
 
   const loadDashboardStats = useCallback(async (signal) => {
     setDashboardLoading(true);
@@ -88,6 +112,41 @@ export default function AdminPanel() {
           </div>
 
           <div className="admin-page-header-actions">
+            {currentUser && (
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--text-dim, #9ca3af)",
+                  marginRight: "8px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                👤 {currentUser.name}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={async () => {
+                await logoutAdmin();
+                window.location.href = "/login?next=/admin";
+              }}
+              style={{
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                color: "#f87171",
+                padding: "4px 10px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                marginRight: "8px",
+              }}
+            >
+              Cerrar sesión
+            </button>
             <span className="admin-preview-badge">
               {activePage === "intelligence"
                 ? t("admin.panel.badgePreMl")

@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import settings
 import app.models  # noqa: F401
-from app.routers import analytics, assessments, db_health, sessions
+from app.routers import analytics, assessments, auth, db_health, sessions
 from app.routers.visits import router as visits_router
 
 app = FastAPI(title="CCLAS API")
@@ -44,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth.router, prefix="/api")
 app.include_router(db_health.router)
 app.include_router(analytics.router)
 app.include_router(analytics.router, prefix="/api")

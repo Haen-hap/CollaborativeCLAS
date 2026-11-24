@@ -7,7 +7,11 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  getAdminAuthToken,
+  getAdminMe,
   getAnalyticsSummary,
+  getStoredAdminUser,
+  logoutAdmin,
   restoreAnalyticsData,
   simulateAnalyticsSample,
 } from "../api/api";
@@ -15,8 +19,6 @@ import { LanguageSelector, useI18n } from "../utils/i18n";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import "./AnalyticsDashboard.css";
 
-const ANALYTICS_PIN = import.meta.env.VITE_ANALYTICS_PIN || "2026";
-const LEGACY_PIN = "7058";
 const LIVE_SOURCE = "LIVE_API";
 const SIMULATED_SOURCE = "SIMULATED_50_SESSIONS";
 
@@ -245,16 +247,31 @@ function csvEscape(value) {
 
 export default function AnalyticsDashboard() {
   const { t } = useI18n();
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminAuthToken()));
+  const [currentUser, setCurrentUser] = useState(getStoredAdminUser);
   const [activeTab, setActiveTab] = useState("general");
-  const [pin, setPin] = useState("");
-  const [hasPinError, setHasPinError] = useState(false);
   const [summary, setSummary] = useState(emptySummary);
   const [zones, setZones] = useState([]);
   const [source, setSource] = useState(LIVE_SOURCE);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const token = getAdminAuthToken();
+    if (!token) {
+      window.location.href = "/login?next=/datos";
+      return;
+    }
+    getAdminMe()
+      .then((user) => {
+        setCurrentUser(user);
+        setAuthenticated(true);
+      })
+      .catch(() => {
+        window.location.href = "/login?next=/datos";
+      });
+  }, []);
 
   const loadLiveData = async () => {
     setLoading(true);
@@ -308,16 +325,6 @@ export default function AnalyticsDashboard() {
   );
 
   const redZones = zones.filter((zone) => zone.status === "RED");
-
-  const handlePinSubmit = (event) => {
-    event.preventDefault();
-    if (pin === ANALYTICS_PIN || pin === LEGACY_PIN) {
-      setAuthenticated(true);
-      setHasPinError(false);
-    } else {
-      setHasPinError(true);
-    }
-  };
 
   const handleSimulation = async () => {
     setLoading(true);
@@ -421,34 +428,27 @@ export default function AnalyticsDashboard() {
             <div className="analytics-mark">CCLAS</div>
             <LanguageSelector variant="light" />
           </div>
-          <p className="analytics-eyebrow">{t("analytics.gate.eyebrow")}</p>
-          <h1>{t("analytics.gate.title")}</h1>
+          <p className="analytics-eyebrow">Autenticación Requerida</p>
+          <h1>Acceso Restringido</h1>
           <p className="analytics-gate-copy">
-            {t("analytics.gate.copy")}
+            Se requiere autenticación de administrador en la red autorizada para consultar este panel.
           </p>
-          <form onSubmit={handlePinSubmit}>
-            <label htmlFor="analytics-pin">{t("analytics.gate.pinLabel")}</label>
-            <input
-              id="analytics-pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              value={pin}
-              onChange={(event) => setPin(event.target.value)}
-              placeholder="••••"
-              aria-invalid={hasPinError}
-              autoFocus
-            />
-            {hasPinError && (
-              <p className="analytics-form-error" role="alert">
-                {t("analytics.gate.pinError")}
-              </p>
-            )}
-            <button className="analytics-primary-button" type="submit">
-              {t("analytics.gate.unlock")}
-            </button>
-          </form>
-          <a className="analytics-text-link" href="/">{t("analytics.gate.backLink")}</a>
+          <a
+            className="analytics-primary-button"
+            href="/login?next=/datos"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              marginTop: "16px",
+            }}
+          >
+            Iniciar Sesión
+          </a>
+          <a className="analytics-text-link" href="/" style={{ marginTop: "16px" }}>
+            ← Volver al inicio
+          </a>
         </section>
       </main>
     );
@@ -511,11 +511,36 @@ export default function AnalyticsDashboard() {
               {isLiveSource ? t("analytics.source.live") : t("analytics.source.demo")}
             </span>
             <div className="analytics-command-actions">
+              {currentUser && (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--text-dim, #9ca3af)",
+                    padding: "0 6px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  👤 {currentUser.name}
+                </span>
+              )}
               <button type="button" onClick={handleSimulation} title={t("analytics.actions.simulateTitle")} aria-label={t("analytics.actions.simulateAria")}>{t("analytics.actions.simulate")}</button>
               <button type="button" onClick={handleRestore} title={t("analytics.actions.restoreTitle")} aria-label={t("analytics.actions.restoreAria")}>{t("analytics.actions.restore")}</button>
               <button type="button" className="is-export" onClick={handleExportCsv} title={t("analytics.actions.csvTitle")} aria-label={t("analytics.actions.csvAria")}>CSV</button>
               <button type="button" className="is-export" onClick={handleExportJson} title={t("analytics.actions.jsonTitle")} aria-label={t("analytics.actions.jsonAria")}>JSON</button>
-              <button type="button" className="is-lock" onClick={() => setAuthenticated(false)} title={t("analytics.actions.lockTitle")} aria-label={t("analytics.actions.lockAria")}>{t("analytics.actions.lock")}</button>
+              <button
+                type="button"
+                className="is-lock"
+                onClick={async () => {
+                  await logoutAdmin();
+                  window.location.href = "/login?next=/datos";
+                }}
+                title={t("analytics.actions.lockTitle")}
+                aria-label={t("analytics.actions.lockAria")}
+              >
+                {t("analytics.actions.lock")}
+              </button>
             </div>
             <LanguageSelector />
           </div>

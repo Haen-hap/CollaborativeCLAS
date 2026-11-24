@@ -14,4 +14,5 @@ from app.models.assessment_results import AssessmentResult
 from app.models.game_session import GameSession
 from app.models.visit import Visit, DailyCounter
 from app.models.rewards import Reward
+from app.models.admin_user import AdminUser
 

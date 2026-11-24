@@ -82,7 +82,9 @@
           path.startsWith("/datos") ||
           path.startsWith("/admin") ||
           path.startsWith("/qr") ||
-          path.startsWith("/form");
+          path.startsWith("/form") ||
+          path.startsWith("/login") ||
+          path.startsWith("/register");
         if (isReactRoute) {
           var ninaApp = document.getElementById("app");
           if (ninaApp) ninaApp.remove();

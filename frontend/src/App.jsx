@@ -18,6 +18,8 @@ import ResultScreen from "./components/ResultScreen";
 import QrEntryPage from "./components/QrEntryPage";
 import AdminPanel from "./components/AdminPanel";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import LoginView from "./components/auth/LoginView";
+import RegisterView from "./components/auth/RegisterView";
 import "./App.css";
 
 function App() {
@@ -51,6 +53,14 @@ function App() {
 
   if (pathname === "/admin" || pathname === "/admin/") {
     return <AdminPanel />;
+  }
+
+  if (pathname.startsWith("/login")) {
+    return <LoginView />;
+  }
+
+  if (pathname.startsWith("/register")) {
+    return <RegisterView />;
   }
 
   const handleDemographicComplete = async (data) => {

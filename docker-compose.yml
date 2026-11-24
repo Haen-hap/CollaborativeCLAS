@@ -1,10 +1,9 @@
-<<<<<<< Updated upstream
 services:
   db:
     image: postgres:15-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -27,6 +26,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/cclas
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://10.42.0.1
+      ADMIN_ALLOWED_CIDRS: 127.0.0.1/32,::1/128,172.16.0.0/12,10.42.0.1/32
+      ADMIN_SECRET_KEY: gbm-cclas-admin-secret-key-change-in-production-2026
+      ADMIN_INVITE_CODE: GBM-ADMIN-2026
     volumes:
       - ./backend:/app
     depends_on:
@@ -38,8 +40,6 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:5173:5173"
-    env_file:
-      - ./frontend/.env
     environment:
       VITE_API_URL: ""
     depends_on:
@@ -59,46 +59,3 @@ services:
 
 volumes:
   postgres_data:
-=======
-services:
-  db:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cclas
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cclas"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build: ./backend
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/cclas
-    depends_on:
-      db:
-        condition: service_healthy
-
-  frontend:
-    build: ./frontend
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
-
-volumes:
-  postgres_data:
->>>>>>> Stashed changes

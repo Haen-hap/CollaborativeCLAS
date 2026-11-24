@@ -1,0 +1,199 @@
+import pytest
+from app.models.admin_user import AdminUser
+from app.core.security import create_signed_token, hash_pin_or_password
+from app.core.settings import settings
+
+
+def test_auth_status_network_detection(test_client):
+    # Allowed IP (testclient resolves to 127.0.0.1)
+    res_allowed = test_client.get("/api/auth/status")
+    assert res_allowed.status_code == 200
+    data_allowed = res_allowed.json()
+    assert data_allowed["network_allowed"] is True
+    assert data_allowed["has_admins"] is False
+
+    # Blocked IP via X-Real-IP
+    res_blocked = test_client.get(
+        "/api/auth/status",
+        headers={"X-Real-IP": "10.42.0.53"},
+    )
+    assert res_blocked.status_code == 200
+    data_blocked = res_blocked.json()
+    assert data_blocked["network_allowed"] is False
+
+
+def test_unauthorized_ip_returns_403(test_client):
+    unauthorized_headers = {"X-Real-IP": "10.42.0.53"}
+
+    # Register blocked
+    res_reg = test_client.post(
+        "/api/auth/register",
+        json={"name": "Attacker", "email": "att@domain.com", "pin": "1234"},
+        headers=unauthorized_headers,
+    )
+    assert res_reg.status_code == 403
+    assert "Acceso restringido a la red administrativa autorizada" in res_reg.json()["detail"]
+
+    # Login blocked
+    res_login = test_client.post(
+        "/api/auth/login",
+        json={"email": "att@domain.com", "pin": "1234"},
+        headers={"X-Real-IP": "203.0.113.10"},
+    )
+    assert res_login.status_code == 403
+    assert "Acceso restringido a la red administrativa autorizada" in res_login.json()["detail"]
+
+    # Analytics blocked even with token
+    valid_token = create_signed_token({"sub": "admin@cclas.org", "uid": 1, "role": "admin"}, settings.admin_secret_key)
+    res_analytics = test_client.get(
+        "/analytics/summary",
+        headers={
+            "X-Real-IP": "10.42.0.88",
+            "Authorization": f"Bearer {valid_token}",
+        },
+    )
+    assert res_analytics.status_code == 403
+
+
+def test_bootstrap_first_admin_creates_superadmin(test_client, db_session):
+    payload = {
+        "name": "Super Admin",
+        "email": "SUPERADMIN@cclas.org",
+        "pin": "supersecret2026",
+    }
+    response = test_client.post("/api/auth/register", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "token" in data
+    assert data["user"]["role"] == "superadmin"
+    assert data["user"]["email"] == "superadmin@cclas.org"
+    assert data["user"]["name"] == "Super Admin"
+
+    # Status now shows has_admins: True
+    status_res = test_client.get("/api/auth/status")
+    assert status_res.json()["has_admins"] is True
+
+
+def test_duplicate_email_returns_409(test_client, db_session):
+    payload = {
+        "name": "Super Admin",
+        "email": "admin@cclas.org",
+        "pin": "supersecret2026",
+    }
+    res1 = test_client.post("/api/auth/register", json=payload)
+    assert res1.status_code == 201
+
+    res2 = test_client.post("/api/auth/register", json=payload)
+    assert res2.status_code == 409
+    assert "ya está registrado" in res2.json()["detail"]
+
+
+def test_subsequent_admin_registration_requires_invite_code(test_client, db_session):
+    # First admin (bootstrap)
+    test_client.post(
+        "/api/auth/register",
+        json={"name": "First Admin", "email": "first@cclas.org", "pin": "pass1234"},
+    )
+
+    # Second admin without invite code -> 403
+    res_no_invite = test_client.post(
+        "/api/auth/register",
+        json={"name": "Second Admin", "email": "second@cclas.org", "pin": "pass1234"},
+    )
+    assert res_no_invite.status_code == 403
+
+    # Second admin with wrong invite code -> 403
+    res_wrong_invite = test_client.post(
+        "/api/auth/register",
+        json={
+            "name": "Second Admin",
+            "email": "second@cclas.org",
+            "pin": "pass1234",
+            "invite_code": "WRONG-CODE",
+        },
+    )
+    assert res_wrong_invite.status_code == 403
+
+    # Second admin with valid invite code -> 201, role='admin'
+    res_valid_invite = test_client.post(
+        "/api/auth/register",
+        json={
+            "name": "Second Admin",
+            "email": "second@cclas.org",
+            "pin": "pass1234",
+            "invite_code": "GBM-ADMIN-2026",
+        },
+    )
+    assert res_valid_invite.status_code == 201
+    assert res_valid_invite.json()["user"]["role"] == "admin"
+
+
+def test_login_success_and_wrong_pin(test_client, db_session):
+    user = AdminUser(
+        name="Login User",
+        email="login@cclas.org",
+        password_hash=hash_pin_or_password("correct-pin-123"),
+        role="admin",
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    # Wrong PIN
+    res_wrong = test_client.post(
+        "/api/auth/login",
+        json={"email": "login@cclas.org", "pin": "wrong-pin"},
+    )
+    assert res_wrong.status_code == 401
+    assert "Credenciales incorrectas" in res_wrong.json()["detail"]
+
+    # Correct PIN
+    res_ok = test_client.post(
+        "/api/auth/login",
+        json={"email": "login@cclas.org", "pin": "correct-pin-123"},
+    )
+    assert res_ok.status_code == 200
+    data = res_ok.json()
+    assert "token" in data
+    assert data["user"]["email"] == "login@cclas.org"
+
+
+def test_auth_me_and_logout(test_client, db_session):
+    user = AdminUser(
+        name="Profile User",
+        email="profile@cclas.org",
+        password_hash=hash_pin_or_password("profile-pass"),
+        role="admin",
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = create_signed_token({"sub": user.email, "uid": user.id, "role": user.role}, settings.admin_secret_key)
+
+    # Missing token -> 401
+    res_no_tok = test_client.get("/api/auth/me")
+    assert res_no_tok.status_code == 401
+
+    # Valid token
+    res_me = test_client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_me.status_code == 200
+    assert res_me.json()["email"] == "profile@cclas.org"
+    assert res_me.json()["name"] == "Profile User"
+
+    # Logout
+    res_logout = test_client.post("/api/auth/logout")
+    assert res_logout.status_code == 200
+    assert res_logout.json()["ok"] is True
+
+
+def test_pin_length_validation(test_client):
+    res_short = test_client.post(
+        "/api/auth/register",
+        json={"name": "Short Pin", "email": "short@cclas.org", "pin": "123"},
+    )
+    assert res_short.status_code == 422
