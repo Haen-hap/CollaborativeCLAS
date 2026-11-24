@@ -7,13 +7,13 @@
     <meta name="theme-color" content="#0A192F" />
     <meta name="description" content="GBM CCLAS · Collaborative Community Literacy Assessment System" />
     <title>GBM CCLAS · La Ruta de Nina</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>
     <div id="app">
       <header>
         GBM<b>CCLAS</b><i id="asst">Modo asistido</i>
+        <a href="/qr" class="qr-nav-link" aria-label="Abrir código QR">QR</a>
         <div id="language-selector" role="group">
           <button type="button" data-language="es" onclick="changeLanguage('es')">ES</button>
           <button type="button" data-language="en" onclick="changeLanguage('en')">EN</button>
@@ -81,7 +81,8 @@
         var isReactRoute =
           path.startsWith("/datos") ||
           path.startsWith("/admin") ||
-          path.startsWith("/qr");
+          path.startsWith("/qr") ||
+          path.startsWith("/form");
         if (isReactRoute) {
           var ninaApp = document.getElementById("app");
           if (ninaApp) ninaApp.remove();

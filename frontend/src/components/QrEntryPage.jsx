@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LanguageSelector, useI18n } from "../utils/i18n";
 import { buildQrMatrixGrid, drawMatrixGridToCanvas } from "../utils/qrCode";
 
@@ -14,7 +14,38 @@ function resolvePortalEndpoint() {
 export default function QrEntryPage() {
   const { t } = useI18n();
   const matrixCanvasRef = useRef(null);
-  const portalEndpointUri = useMemo(() => resolvePortalEndpoint(), []);
+  const [portalEndpointUri, setPortalEndpointUri] = useState(() =>
+    resolvePortalEndpoint()
+  );
+  const [activeNetworkMode, setActiveNetworkMode] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isLoopback =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    if (!isLoopback) return;
+
+    fetch("/lan-info.json", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("lan-info unavailable");
+        return res.json();
+      })
+      .then((data) => {
+        if (data && (data.url || data.ipv4)) {
+          const targetUrl = data.url || `http://${data.ipv4}/`;
+          setPortalEndpointUri(targetUrl);
+          const label =
+            data.mode === "hotspot"
+              ? `Hotspot (${data.ipv4})`
+              : `LAN / Wi-Fi (${data.ipv4})`;
+          setActiveNetworkMode(label);
+        }
+      })
+      .catch(() => {
+        // Fallback silently to localhost origin
+      });
+  }, []);
 
   const synthesisState = useMemo(() => {
     try {
@@ -149,7 +180,7 @@ export default function QrEntryPage() {
             </div>
             <div className="gbm-meta-item">
               <dt>{t("qr.meta.modeLabel")}</dt>
-              <dd>{t("qr.meta.modeValue")}</dd>
+              <dd>{activeNetworkMode || t("qr.meta.modeValue")}</dd>
             </div>
           </dl>
         </div>

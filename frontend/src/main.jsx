@@ -10,7 +10,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   const isDashboardRoute =
     window.location.pathname.startsWith('/datos') ||
     window.location.pathname.startsWith('/admin') ||
-    window.location.pathname.startsWith('/qr')
+    window.location.pathname.startsWith('/qr') ||
+    window.location.pathname.startsWith('/form')
 
   if (import.meta.env.DEV || isDashboardRoute) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {

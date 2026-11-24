@@ -168,20 +168,20 @@ const updateLanguageControls = () => {
 };
 const renderHome = () => {
   pose("wave", "open", 3000); clearInterval(window.cd); gems(0); say2(t("welcome.greeting"));
-  show(`<div class="q">${t(kiosk !== "DIRECT_WEB" ? "welcome.kiosk" : "welcome.web")}</div><p class="sub">${t("welcome.subtitle")}</p><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${t("welcome.web")}')">${spk}</button><div style="flex:1"></div><button class="btn" onclick="privacy()"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M6 3l15 9-15 9z"/></svg>${t("welcome.play")}</button>`);
+  show(`<div class="q">${t(kiosk !== "DIRECT_WEB" ? "welcome.kiosk" : "welcome.web")}</div><p class="sub">${t("welcome.subtitle")}</p><button class="audio" aria-label="${t("audio.readAloud")}" onclick="say('${t("welcome.web")}')">${spk}</button><button class="btn" style="margin-top:auto" onclick="privacy()"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M6 3l15 9-15 9z"/></svg>${t("welcome.play")}</button>`);
 };
 const renderPrivacy = () => {
   say2(t("privacy.bubble"));
-  show(`<div class="q">${t("privacy.title")}</div><div class="pts"><div>${ic("no")} ${t("privacy.noName")}</div><div>${ic("user")} ${t("privacy.noId")}</div><div>${ic("lock")} ${t("privacy.noStorage")}</div></div><p class="sub">${t("privacy.description")}</p><div style="flex:1"></div><button class="btn" onclick="age18()">${t("privacy.agree")}</button><button class="btn alt" onclick="bye('goodbye.noThanks')">${t("privacy.decline")}</button>`);
+  show(`<div class="q">${t("privacy.title")}</div><div class="pts"><div>${ic("no")} ${t("privacy.noName")}</div><div>${ic("user")} ${t("privacy.noId")}</div><div>${ic("lock")} ${t("privacy.noStorage")}</div></div><p class="sub">${t("privacy.description")}</p><button class="btn" style="margin-top:auto" onclick="age18()">${t("privacy.agree")}</button><button class="btn alt" onclick="bye('goodbye.noThanks')">${t("privacy.decline")}</button>`);
 };
 let goodbyeKey = "goodbye.noThanks";
 const renderGoodbye = () => {
   pose("wave", "smile", 2600); say2(t("goodbye.title"));
-  show(`<div class="q">${t(goodbyeKey)}</div><div style="flex:1"></div><button class="btn" onclick="home()">${t("goodbye.return")}</button>`);
+  show(`<div class="q">${t(goodbyeKey)}</div><button class="btn" style="margin-top:auto" onclick="home()">${t("goodbye.return")}</button>`);
 };
 const renderAgeGate = () => {
   say2(t("age.quick"));
-  show(`<div class="q">${t("age.adultQuestion")}</div><div style="flex:1"></div><button class="btn" onclick="tone(760);next()">${t("age.yes")}</button><button class="btn alt" onclick="bye('goodbye.underage')">${t("age.no")}</button>`);
+  show(`<div class="q">${t("age.adultQuestion")}</div><button class="btn" style="margin-top:auto" onclick="tone(760);next()">${t("age.yes")}</button><button class="btn alt" onclick="bye('goodbye.underage')">${t("age.no")}</button>`);
 };
 const home = () => {
   S = null; currentView = "home"; resultPresentation = null; poke(); clearInterval(window.cd); gems(0); renderHome();
@@ -229,7 +229,7 @@ const R = {
   school: () => { say2(t("question.school")); show(cards("question.school", SCH, "school", 1)); },
   zone: () => {
     say2(t("question.zone"));
-    show(`<div class="q">${t("question.zone")}</div><input class="srch" id="zi" aria-label="${t("zone.search")}" placeholder="${t("zone.search")}" autocomplete="off" oninput="zs(this.value)"><div class="chips" id="zr"></div><div style="flex:1"></div><button class="btn alt" onclick="set('zone','DECLINED')">${t("zone.decline")}</button>`);
+    show(`<div class="q">${t("question.zone")}</div><input class="srch" id="zi" aria-label="${t("zone.search")}" placeholder="${t("zone.search")}" autocomplete="off" oninput="zs(this.value)"><div class="chips" id="zr"></div><button class="btn alt" style="margin-top:auto" onclick="set('zone','DECLINED')">${t("zone.decline")}</button>`);
     zs("");
   },
   sign: step => {

@@ -20,12 +20,12 @@ services:
     build: ./backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/cclas
-      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://10.42.0.1
     volumes:
       - ./backend:/app
     depends_on:
@@ -36,16 +36,25 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     env_file:
       - ./frontend/.env
     environment:
-      VITE_API_URL: http://localhost:8000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      VITE_API_URL: ""
     depends_on:
       - backend
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./runtime/lan:/usr/share/nginx/lan:ro
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   postgres_data:

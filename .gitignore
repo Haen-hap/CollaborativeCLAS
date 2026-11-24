@@ -26,3 +26,6 @@ frontend-legacy/
 node_modules/
 dist/
 build/
+
+# Dynamic runtime state & generated LAN info
+runtime/
