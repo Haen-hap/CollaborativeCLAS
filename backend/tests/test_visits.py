@@ -3,11 +3,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
-from app.core.settings import settings
 from app.main import app
 from app.models import DailyCounter, Visit
+from app.models.admin_user import AdminUser
+from app.routers.auth import get_current_admin
 
-PIN = {"X-Dashboard-Pin": settings.dashboard_pin}
 VID = "V-test-0001"
 
 
@@ -19,7 +19,24 @@ def body(**over):
 def client(db):
     app.dependency_overrides[get_db] = lambda: db
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture(autouse=True)
+def override_admin_auth():
+    """Provides an authenticated admin for protected visits endpoints."""
+    def _mock_admin():
+        return AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    app.dependency_overrides[get_current_admin] = _mock_admin
+    yield
+    app.dependency_overrides.pop(get_current_admin, None)
 
 
 # ---------- modelo y restricciones ----------
@@ -107,15 +124,43 @@ def test_summary_counts_everyone_who_entered(client):
     client.put("/api/visits/V-bbbbbbbb", json=body(kiosk_id="PTYK002", outcome="ABANDONED"))
     client.put("/api/visits/V-cccccccc", json=body(outcome="DECLINED_PRIVACY"))
     client.put("/api/visits/V-dddddddd", json=body(outcome="UNDER_18"))
-    assert client.get("/api/visits/summary").status_code == 401
-    s = client.get("/api/visits/summary", headers=PIN).json()
+
+    # Verify unauthenticated and legacy PIN headers return 401
+    app.dependency_overrides.pop(get_current_admin, None)
+    try:
+        assert client.get("/api/visits/summary").status_code == 401
+        assert client.get("/api/visits/summary", headers={"X-Dashboard-Pin": "2026"}).status_code == 401
+    finally:
+        app.dependency_overrides[get_current_admin] = lambda: AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    s = client.get("/api/visits/summary").json()
     assert s["entries_total"] == 4
     assert s["outcomes"]["COMPLETED"] == s["outcomes"]["ABANDONED"] == s["outcomes"]["DECLINED_PRIVACY"] == s["outcomes"]["UNDER_18"] == 1
     assert s["by_kiosk"] == {"PTYK001": 3, "PTYK002": 1}
     assert sum(d["entries"] for d in s["daily"]) == 4
 
 
-def test_listing_visits_requires_pin(client):
+def test_listing_visits_requires_admin_auth(client):
     client.put(f"/api/visits/{VID}", json=body())
-    assert client.get("/api/visits").status_code == 401
-    assert len(client.get("/api/visits", headers=PIN).json()) == 1
+
+    # Verify unauthenticated and legacy PIN headers return 401
+    app.dependency_overrides.pop(get_current_admin, None)
+    try:
+        assert client.get("/api/visits").status_code == 401
+        assert client.get("/api/visits", headers={"X-Dashboard-Pin": "2026"}).status_code == 401
+    finally:
+        app.dependency_overrides[get_current_admin] = lambda: AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    assert len(client.get("/api/visits").json()) == 1

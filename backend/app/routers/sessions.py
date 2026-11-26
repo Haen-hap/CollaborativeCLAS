@@ -1,13 +1,11 @@
-import hmac
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.settings import settings
 from app.core.zones_data import KIOSKS, ZONES
 from app.models.access_points import AccessPoint, AccessPointType
 from app.models.assessment_results import AssessmentResult, LiteracyClassification
@@ -20,6 +18,7 @@ from app.models.assessment_session import (
 )
 from app.models.rewards import Reward, TriggerType
 from app.models.zone import Kiosk, Zone
+from app.routers.auth import get_current_admin
 from app.schemas.session import SessionIn, SessionOut
 from app.services.scoring import classify
 
@@ -49,11 +48,6 @@ def _ensure_catalog_entry(db: Session, kiosk_id: str, zone_code: str) -> None:
         ap_type = AccessPointType.WEB if kiosk_id == "DIRECT_WEB" else AccessPointType.KIOSK
         db.add(AccessPoint(code=kiosk_id, name=ap_name, type=ap_type))
     db.flush()
-
-
-def require_pin(x_dashboard_pin: Optional[str] = Header(default=None)) -> None:
-    if not x_dashboard_pin or not hmac.compare_digest(x_dashboard_pin, settings.dashboard_pin):
-        raise HTTPException(status_code=401, detail="PIN inválido")
 
 
 @router.post("/sessions", response_model=SessionOut)
@@ -176,7 +170,7 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
     )
 
 
-@router.get("/sessions", response_model=list[SessionOut], dependencies=[Depends(require_pin)])
+@router.get("/sessions", response_model=list[SessionOut], dependencies=[Depends(get_current_admin)])
 def list_sessions(limit: int = 5000, db: Session = Depends(get_db)):
     rows = (
         db.query(AssessmentSession)
@@ -230,7 +224,7 @@ def list_sessions(limit: int = 5000, db: Session = Depends(get_db)):
     return out
 
 
-@router.get("/metrics", dependencies=[Depends(require_pin)])
+@router.get("/metrics", dependencies=[Depends(get_current_admin)])
 def metrics(db: Session = Depends(get_db)):
     total = db.query(func.count(AssessmentSession.session_id)).scalar() or 0
     completed = (

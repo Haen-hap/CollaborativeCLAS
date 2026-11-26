@@ -6,8 +6,6 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     database_url: str
-    # PIN del dashboard /datos (el cliente indica 2026 por defecto; cambiar en producción)
-    dashboard_pin: str = "2026"
     # Orígenes permitidos para el frontend, separados por coma
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

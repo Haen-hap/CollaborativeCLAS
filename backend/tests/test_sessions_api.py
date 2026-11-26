@@ -2,10 +2,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import get_db
-from app.core.settings import settings
 from app.main import app
+from app.models.admin_user import AdminUser
 from app.models.assessment_results import AssessmentResult
 from app.models.assessment_session import AssessmentSession
+from app.routers.auth import get_current_admin
 from tests.helpers import valid
 
 
@@ -13,10 +14,24 @@ from tests.helpers import valid
 def client(db):
     app.dependency_overrides[get_db] = lambda: db
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
-PIN = {"X-Dashboard-Pin": settings.dashboard_pin}
+@pytest.fixture(autouse=True)
+def override_admin_auth():
+    """Provides an authenticated admin for protected sessions endpoints."""
+    def _mock_admin():
+        return AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    app.dependency_overrides[get_current_admin] = _mock_admin
+    yield
+    app.dependency_overrides.pop(get_current_admin, None)
 
 
 def test_server_recalculates_total_and_classification(client):
@@ -49,13 +64,29 @@ def test_extra_personal_fields_are_ignored(client, db):
     assert r.status_code == 201 and "full_name" not in r.json() and "cedula" not in r.json()
 
 
-def test_listing_and_metrics_require_pin(client):
+def test_listing_and_metrics_require_admin_auth(client):
     client.post("/api/sessions", json=valid())
-    assert client.get("/api/sessions").status_code == 401
-    assert client.get("/api/sessions", headers={"X-Dashboard-Pin": "0000"}).status_code == 401
-    ok = client.get("/api/sessions", headers=PIN)
+
+    # Temporarily remove admin override to verify unauthenticated rejection
+    app.dependency_overrides.pop(get_current_admin, None)
+    try:
+        assert client.get("/api/sessions").status_code == 401
+        assert client.get("/api/sessions", headers={"X-Dashboard-Pin": "2026"}).status_code == 401
+        assert client.get("/api/metrics").status_code == 401
+        assert client.get("/api/metrics", headers={"X-Dashboard-Pin": "2026"}).status_code == 401
+    finally:
+        app.dependency_overrides[get_current_admin] = lambda: AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    # With admin auth override active
+    ok = client.get("/api/sessions")
     assert ok.status_code == 200 and len(ok.json()) == 1
-    m = client.get("/api/metrics", headers=PIN).json()
+    m = client.get("/api/metrics").json()
     assert m["total_sessions"] == 1 and m["tiers"]["YELLOW"] == 1
 
 
