@@ -2,7 +2,8 @@ import hmac
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy import func
+from sqlalchemy import func, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -73,7 +74,12 @@ def get_auth_status(request: Request, db: Session = Depends(get_db)) -> AuthStat
     """Returns network authorization state and whether admin users exist."""
     effective_ip = resolve_effective_ip(request)
     network_ok = is_ip_allowed(effective_ip, settings.admin_allowed_cidrs)
-    has_admins = (db.query(func.count(AdminUser.id)).scalar() or 0) > 0
+    has_admins = (
+        db.query(func.count(AdminUser.id))
+        .filter(AdminUser.is_active.is_(True))
+        .scalar()
+        or 0
+    ) > 0
     return AuthStatusResponse(
         network_allowed=network_ok,
         has_admins=has_admins,
@@ -90,6 +96,10 @@ def register_admin(
     _network: str = Depends(require_admin_network),
 ) -> TokenResponse:
     """Registers the first superadmin (bootstrap) or subsequent admins with invite code."""
+    bind = db.get_bind()
+    if bind is not None and bind.dialect.name == "postgresql":
+        db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": 4242001})
+
     email_clean = payload.email.lower().strip()
     existing = db.query(AdminUser).filter(AdminUser.email == email_clean).first()
     if existing:
@@ -98,7 +108,12 @@ def register_admin(
             detail="El correo electrónico ya está registrado",
         )
 
-    admin_count = db.query(func.count(AdminUser.id)).scalar() or 0
+    admin_count = (
+        db.query(func.count(AdminUser.id))
+        .filter(AdminUser.is_active.is_(True))
+        .scalar()
+        or 0
+    )
     if admin_count == 0:
         # Bootstrap mode: first user becomes superadmin
         role = "superadmin"
@@ -110,7 +125,9 @@ def register_admin(
         elif authorization and authorization.lower().startswith("bearer "):
             token = authorization[7:].strip()
             token_payload = verify_signed_token(token, settings.admin_secret_key)
-            if token_payload and token_payload.get("role") == "superadmin":
+            caller_id = token_payload.get("uid") if token_payload else None
+            caller = db.get(AdminUser, caller_id) if caller_id else None
+            if caller and caller.is_active and caller.role == "superadmin":
                 is_authorized = True
 
         if not is_authorized:
@@ -129,7 +146,14 @@ def register_admin(
         is_active=True,
     )
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este correo ya está registrado.",
+        )
     db.refresh(new_user)
 
     token = create_signed_token(

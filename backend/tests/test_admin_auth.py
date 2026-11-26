@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from app.models.admin_user import AdminUser
 from app.core.security import create_signed_token, hash_pin_or_password
@@ -105,6 +106,92 @@ def test_bootstrap_first_admin_creates_superadmin(test_client, db_session):
     # Status now shows has_admins: True
     status_res = test_client.get("/api/auth/status")
     assert status_res.json()["has_admins"] is True
+
+
+def test_inactive_admin_does_not_block_bootstrap(test_client, db_session):
+    inactive_admin = AdminUser(
+        name="Inactive Admin",
+        email="inactive@cclas.org",
+        password_hash=hash_pin_or_password("inactive-pass"),
+        role="admin",
+        is_active=False,
+    )
+    db_session.add(inactive_admin)
+    db_session.commit()
+
+    status_res = test_client.get("/api/auth/status")
+    assert status_res.status_code == 200
+    assert status_res.json()["has_admins"] is False
+
+    response = test_client.post(
+        "/api/auth/register",
+        json={"name": "First Active Admin", "email": "active@cclas.org", "pin": "pass1234"},
+    )
+    assert response.status_code == 201
+    assert response.json()["user"]["role"] == "superadmin"
+    assert response.json()["user"]["is_active"] is True
+
+
+def test_registration_integrity_error_returns_409_and_rolls_back(
+    test_client, db_session, monkeypatch
+):
+    original_rollback = db_session.rollback
+    rollback_calls = []
+
+    def raise_integrity_error():
+        raise IntegrityError("INSERT", {}, Exception("duplicate"))
+
+    def track_rollback():
+        rollback_calls.append(True)
+        original_rollback()
+
+    monkeypatch.setattr(db_session, "commit", raise_integrity_error)
+    monkeypatch.setattr(db_session, "rollback", track_rollback)
+
+    response = test_client.post(
+        "/api/auth/register",
+        json={"name": "New Admin", "email": "new@cclas.org", "pin": "pass1234"},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Este correo ya está registrado."
+    assert rollback_calls == [True]
+
+
+@pytest.mark.parametrize(
+    ("role", "is_active"),
+    [("superadmin", False), ("admin", True)],
+)
+def test_registration_rejects_invalid_superadmin_bearer(
+    test_client, db_session, role, is_active
+):
+    existing_admin = AdminUser(
+        name="Existing Admin",
+        email="existing@cclas.org",
+        password_hash=hash_pin_or_password("existing-pass"),
+        role="admin",
+        is_active=True,
+    )
+    caller = AdminUser(
+        name="Bearer Caller",
+        email=f"caller-{role}-{is_active}@cclas.org",
+        password_hash=hash_pin_or_password("caller-pass"),
+        role=role,
+        is_active=is_active,
+    )
+    db_session.add_all([existing_admin, caller])
+    db_session.commit()
+    db_session.refresh(caller)
+    token = create_signed_token(
+        {"sub": caller.email, "uid": caller.id, "role": "superadmin"},
+        settings.admin_secret_key,
+    )
+
+    response = test_client.post(
+        "/api/auth/register",
+        json={"name": "Second Admin", "email": "second@cclas.org", "pin": "pass1234"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
 
 
 def test_duplicate_email_returns_409(test_client, db_session):
