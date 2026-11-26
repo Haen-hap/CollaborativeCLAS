@@ -143,10 +143,21 @@ const save = () => {
 };
 
 // ---- assessment setup
+const generateSessionId = globalThis.cclasGenerateSessionId || (() => {
+  if (globalThis.crypto?.randomUUID) {
+    return "SES-" + globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+  }
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(10);
+    globalThis.crypto.getRandomValues(bytes);
+    return "SES-" + Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+  return "SES-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+});
 const fresh = () => {
   const sc = { c1: 0, c2: 0, c3: 0, c4: 0 };
   S = {
-    id: `SES-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+    id: generateSessionId(),
     d: { age: null, work: null, school: null, zone: null }, sc, tot: [0, 0, 0, 0, 0],
     status: "IN_PROGRESS", done: false, answers: [], completedQuestionIds: [],
     kiosk, origin, assisted, out: () => sessionOutput()

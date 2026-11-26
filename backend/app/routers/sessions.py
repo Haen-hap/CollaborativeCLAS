@@ -1,3 +1,4 @@
+import hashlib
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -29,10 +30,11 @@ OFFICIAL_ZONE_MAP = dict(ZONES)
 
 
 def _session_id_to_int(raw_id: str) -> int:
-    digits = "".join(ch for ch in raw_id if ch.isdigit())
-    if digits:
-        return int(digits[-9:]) or 1
-    return (abs(hash(raw_id)) % 2_000_000_000) + 1
+    normalized = raw_id.strip()
+    hash_prefix = hashlib.sha256(normalized.encode("utf-8")).digest()[:4]
+    return 1_000_000 + (
+        int.from_bytes(hash_prefix, "big") % (2_147_483_647 - 1_000_000 + 1)
+    )
 
 
 def _ensure_catalog_entry(db: Session, kiosk_id: str, zone_code: str) -> None:
@@ -56,6 +58,53 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
     if payload.kiosk_id not in OFFICIAL_KIOSK_MAP:
         raise HTTPException(status_code=422, detail="Kiosco o valores no válidos")
 
+    numeric_id = _session_id_to_int(payload.session_id)
+    session_row = db.get(AssessmentSession, numeric_id)
+    if session_row and session_row.completion_status == CompletionStatus.COMPLETED:
+        result_row = session_row.result
+        reward_row = session_row.reward
+        total = result_row.total_literacy_score if result_row else 0
+        classification = (
+            result_row.literacy_classification.value
+            if result_row and result_row.literacy_classification
+            else classify(total).value
+        )
+        response.status_code = 200
+        return SessionOut(
+            session_id=f"SES-{session_row.session_id}",
+            kiosk_id=session_row.access_point_code,
+            origin="UNKNOWN" if session_row.access_point_code == "DIRECT_WEB" else "KIOSK",
+            assisted_mode=session_row.assisted_mode,
+            age_range=session_row.age_range.value if session_row.age_range else None,
+            work_status=session_row.work_status.value if session_row.work_status else None,
+            schooling_level=(
+                session_row.schooling_level.value if session_row.schooling_level else None
+            ),
+            zone_code=session_row.zone_code,
+            c1_visual_signs_score=(
+                result_row.c1_visual_signs_score if result_row else 0
+            ),
+            c2_sentence_comprehension_score=(
+                result_row.c2_sentence_comprehension_score if result_row else 0
+            ),
+            c3_mobile_icons_score=(
+                result_row.c3_mobile_icons_score if result_row else 0
+            ),
+            c4_cybersecurity_score=(
+                result_row.c4_cybersecurity_score if result_row else 0
+            ),
+            total_literacy_score=total,
+            internal_zone_classification=classification,
+            completion_status="COMPLETED",
+            last_step=None,
+            duration_seconds=session_row.duration_seconds,
+            reward_issued=reward_row.issued if reward_row else False,
+            iot_trigger_type=(
+                reward_row.trigger_type.value if reward_row else "NONE"
+            ),
+            repeat_device=False,
+        )
+
     zone_code = payload.zone_code or "DECLINED"
     location_declined = zone_code == "DECLINED"
     _ensure_catalog_entry(db, payload.kiosk_id, zone_code)
@@ -76,9 +125,6 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
         if isinstance(classification, LiteracyClassification)
         else LiteracyClassification(classification)
     )
-
-    numeric_id = _session_id_to_int(payload.session_id)
-    session_row = db.get(AssessmentSession, numeric_id)
 
     age_val = AgeRange(payload.age_range) if payload.age_range else AgeRange.AGE_25_34
     work_val = WorkStatus(payload.work_status) if payload.work_status else WorkStatus.INFORMAL

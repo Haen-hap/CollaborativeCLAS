@@ -329,9 +329,9 @@ def seed_simulated_sessions(db: Session, count: int = 50) -> SimulateResponse:
     """Genera e inserta sesiones simuladas en assessment_sessions, assessment_results y rewards."""
     _ensure_reference_catalog(db)
 
-    # Limpiamos sesiones simuladas previas (rango de IDs 900001+) para que la operación sea idempotente
+    # Limpiamos sesiones simuladas previas para que la operación sea idempotente
     sim_ids_subq = select(AssessmentSession.session_id).where(
-        AssessmentSession.session_id >= 900001
+        AssessmentSession.session_id.between(900001, 999999)
     )
     db.query(Reward).filter(Reward.session_id.in_(sim_ids_subq)).delete(
         synchronize_session=False
@@ -340,7 +340,7 @@ def seed_simulated_sessions(db: Session, count: int = 50) -> SimulateResponse:
         AssessmentResult.session_id.in_(sim_ids_subq)
     ).delete(synchronize_session=False)
     db.query(AssessmentSession).filter(
-        AssessmentSession.session_id >= 900001
+        AssessmentSession.session_id.between(900001, 999999)
     ).delete(synchronize_session=False)
     db.flush()
 
@@ -444,9 +444,9 @@ def seed_simulated_sessions(db: Session, count: int = 50) -> SimulateResponse:
 
 
 def restore_live_sessions(db: Session) -> LegacyAnalyticsSummaryResponse:
-    """Elimina únicamente las sesiones simuladas (session_id >= 900001) y retorna el resumen real."""
+    """Elimina únicamente las sesiones simuladas y retorna el resumen real."""
     sim_ids_subq = select(AssessmentSession.session_id).where(
-        AssessmentSession.session_id >= 900001
+        AssessmentSession.session_id.between(900001, 999999)
     )
     db.query(Reward).filter(Reward.session_id.in_(sim_ids_subq)).delete(
         synchronize_session=False
@@ -455,7 +455,7 @@ def restore_live_sessions(db: Session) -> LegacyAnalyticsSummaryResponse:
         AssessmentResult.session_id.in_(sim_ids_subq)
     ).delete(synchronize_session=False)
     db.query(AssessmentSession).filter(
-        AssessmentSession.session_id >= 900001
+        AssessmentSession.session_id.between(900001, 999999)
     ).delete(synchronize_session=False)
     db.commit()
     return get_analytics_summary(db)
