@@ -5,13 +5,13 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cclas
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in root .env}
+      POSTGRES_DB: ${POSTGRES_DB:-cclas}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cclas"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cclas}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,14 +21,12 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
-    env_file:
-      - ./backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/cclas
-      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://10.42.0.1
-      ADMIN_ALLOWED_CIDRS: 127.0.0.1/32,::1/128,172.16.0.0/12,10.42.0.1/32
-      ADMIN_SECRET_KEY: gbm-cclas-admin-secret-key-change-in-production-2026
-      ADMIN_INVITE_CODE: GBM-ADMIN-2026
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in root .env}@db:5432/${POSTGRES_DB:-cclas}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:?Set ADMIN_SECRET_KEY in root .env}
+      ADMIN_INVITE_CODE: ${ADMIN_INVITE_CODE:?Set ADMIN_INVITE_CODE in root .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://10.42.0.1}
+      ADMIN_ALLOWED_CIDRS: ${ADMIN_ALLOWED_CIDRS:-127.0.0.1/32,::1/128,172.16.0.0/12,10.42.0.1/32}
     volumes:
       - ./backend:/app
     depends_on:

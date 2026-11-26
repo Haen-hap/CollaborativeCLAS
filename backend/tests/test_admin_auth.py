@@ -1,7 +1,40 @@
 import pytest
+from pydantic import ValidationError
+
 from app.models.admin_user import AdminUser
 from app.core.security import create_signed_token, hash_pin_or_password
-from app.core.settings import settings
+from app.core.settings import Settings, settings
+
+
+@pytest.mark.parametrize(
+    ("admin_secret_key", "admin_invite_code"),
+    [
+        (None, "TEST-ONLY-INVITE-CODE"),
+        (" ", "TEST-ONLY-INVITE-CODE"),
+        ("short", "TEST-ONLY-INVITE-CODE"),
+        ("a" + " " * 31, "TEST-ONLY-INVITE-CODE"),
+        ("gbm-cclas-admin-secret-key-change-in-production-2026", "TEST-ONLY-INVITE-CODE"),
+        ("a" * 32 + "<change-me>", "TEST-ONLY-INVITE-CODE"),
+        ("test-only-admin-secret-key-0123456789abcdef", "GBM-ADMIN-2026"),
+        ("test-only-admin-secret-key-0123456789abcdef", " "),
+        ("test-only-admin-secret-key-0123456789abcdef", "<change-me>"),
+        ("test-only-admin-secret-key-0123456789abcdef", "INVITE-<change-me>-CODE"),
+    ],
+)
+def test_settings_reject_missing_or_insecure_admin_credentials(
+    monkeypatch, admin_secret_key, admin_invite_code
+):
+    monkeypatch.delenv("ADMIN_SECRET_KEY", raising=False)
+    values = {
+        "_env_file": None,
+        "database_url": "sqlite://",
+        "admin_invite_code": admin_invite_code,
+    }
+    if admin_secret_key is not None:
+        values["admin_secret_key"] = admin_secret_key
+
+    with pytest.raises(ValidationError):
+        Settings(**values)
 
 
 def test_auth_status_network_detection(test_client):
@@ -121,7 +154,7 @@ def test_subsequent_admin_registration_requires_invite_code(test_client, db_sess
             "name": "Second Admin",
             "email": "second@cclas.org",
             "pin": "pass1234",
-            "invite_code": "GBM-ADMIN-2026",
+            "invite_code": settings.admin_invite_code,
         },
     )
     assert res_valid_invite.status_code == 201
