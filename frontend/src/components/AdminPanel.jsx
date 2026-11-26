@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminDashboard from "./AdminDashboard";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import {
+  clearAdminAuthSession,
   getAdminAuthToken,
   getAdminDashboardStats,
   getAdminMe,
@@ -9,62 +10,151 @@ import {
   logoutAdmin,
 } from "../api/api";
 import { LanguageSelector, useI18n } from "../utils/i18n";
+import "./AnalyticsDashboard.css";
 
 const adminPageKeys = ["dashboard", "intelligence", "results", "questions"];
+
+const gateErrorStyle = {
+  background: "#ef44441a",
+  border: "1px solid #ef4444",
+  color: "#ef4444",
+  padding: "12px",
+  borderRadius: "12px",
+  marginBottom: "16px",
+  fontWeight: 600,
+  fontSize: "14px",
+};
 
 export default function AdminPanel() {
   const { t } = useI18n();
   const [currentUser, setCurrentUser] = useState(getStoredAdminUser);
-  const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminAuthToken()));
+  const [authState, setAuthState] = useState("checking");
+  const authenticated = authState === "authenticated";
+  const restrictedNetwork = authState === "forbidden";
   const [activePage, setActivePage] = useState("dashboard");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
 
   useEffect(() => {
+    let active = true;
     const token = getAdminAuthToken();
     if (!token) {
-      window.location.href = "/login?next=/admin";
-      return;
+      clearAdminAuthSession();
+      window.location.replace("/login?next=/admin");
+      return () => {
+        active = false;
+      };
     }
     getAdminMe()
       .then((user) => {
+        if (!active) return;
         setCurrentUser(user);
-        setAuthenticated(true);
+        setAuthState("authenticated");
       })
-      .catch(() => {
-        window.location.href = "/login?next=/admin";
+      .catch((error) => {
+        if (!active) return;
+        if (error?.status === 403) {
+          setAuthState("forbidden");
+          return;
+        }
+        if (error?.status === 401) {
+          if (error?.sessionCleared || !getAdminAuthToken()) {
+            clearAdminAuthSession();
+            window.location.replace("/login?next=/admin");
+          }
+          return;
+        }
+        window.location.replace("/login?next=/admin");
       });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const loadDashboardStats = useCallback(async (signal) => {
-    setDashboardLoading(true);
-    setDashboardError(null);
-    setDashboardStats(null);
+  const loadDashboardStats = useCallback(
+    async (signal) => {
+      if (!authenticated) return;
+      setDashboardLoading(true);
+      setDashboardError(null);
+      setDashboardStats(null);
 
-    try {
-      const stats = await getAdminDashboardStats({ signal });
-      setDashboardStats(stats);
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        setDashboardError(error.message);
+      try {
+        const stats = await getAdminDashboardStats({ signal });
+        setDashboardStats(stats);
+      } catch (error) {
+        if (error?.status === 401) {
+          if (error?.sessionCleared || !getAdminAuthToken()) {
+            clearAdminAuthSession();
+            setAuthState("checking");
+            window.location.replace("/login?next=/admin");
+          }
+          return;
+        }
+        if (error?.status === 403) {
+          setAuthState("forbidden");
+          return;
+        }
+        if (error.name !== "AbortError") {
+          setDashboardError(error.message);
+        }
+      } finally {
+        if (!signal?.aborted) {
+          setDashboardLoading(false);
+        }
       }
-    } finally {
-      if (!signal?.aborted) {
-        setDashboardLoading(false);
-      }
-    }
-  }, []);
+    },
+    [authenticated],
+  );
 
   useEffect(() => {
-    if (activePage !== "dashboard") {
+    if (!authenticated || activePage !== "dashboard") {
       return undefined;
     }
 
     const controller = new AbortController();
     loadDashboardStats(controller.signal);
     return () => controller.abort();
-  }, [activePage, loadDashboardStats]);
+  }, [activePage, authenticated, loadDashboardStats]);
+
+  if (authState === "checking") {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Autenticación Requerida</p>
+          <h1>Verificando sesión</h1>
+          <p className="analytics-gate-copy">
+            Validando tus credenciales en la red autorizada...
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (restrictedNetwork) {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Acceso Denegado</p>
+          <h1>Red no autorizada</h1>
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
+            Acceso denegado (403): Tu dispositivo o conexión no se encuentra en la red administrativa autorizada.
+          </div>
+          <a className="analytics-text-link" href="/">
+            ← Volver al inicio
+          </a>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className="admin-layout">

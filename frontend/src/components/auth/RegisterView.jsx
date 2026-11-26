@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
 import { getAuthStatus, registerAdmin, setAdminAuthSession } from "../../api/api";
-import { LanguageSelector, useI18n } from "../../utils/i18n";
+import { sanitizeNextUrl } from "../../utils/authRedirect";
+import { LanguageSelector } from "../../utils/i18n";
+
+const gateErrorStyle = {
+  background: "#ef44441a",
+  border: "1px solid #ef4444",
+  color: "#ef4444",
+  padding: "12px",
+  borderRadius: "12px",
+  marginBottom: "16px",
+  fontWeight: 600,
+  fontSize: "14px",
+};
 
 export default function RegisterView() {
-  const { t } = useI18n();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
@@ -11,20 +22,35 @@ export default function RegisterView() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
+  const [statusError, setStatusError] = useState("");
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
-  const nextUrl =
+  const rawNext =
     typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("next") || "/admin"
-      : "/admin";
+      ? new URLSearchParams(window.location.search).get("next")
+      : null;
+  const nextUrl = sanitizeNextUrl(rawNext);
 
   useEffect(() => {
     let active = true;
     getAuthStatus()
       .then((data) => {
-        if (active) setAuthStatus(data);
+        if (active) {
+          setAuthStatus(data);
+          setCheckingStatus(false);
+        }
       })
-      .catch(() => {
-        if (active) setAuthStatus({ network_allowed: true, has_admins: true });
+      .catch((err) => {
+        if (active) {
+          if (err?.status === 403) {
+            setAuthStatus({ network_allowed: false });
+          } else {
+            setStatusError(
+              err?.message || "No se pudo verificar el estado de red/autenticación.",
+            );
+          }
+          setCheckingStatus(false);
+        }
       });
     return () => {
       active = false;
@@ -58,7 +84,7 @@ export default function RegisterView() {
       });
       if (data?.token) {
         setAdminAuthSession(data.token, data.user);
-        window.location.href = nextUrl;
+        window.location.replace(nextUrl);
       }
     } catch (err) {
       setError(err.message || "Error al registrar el administrador.");
@@ -67,7 +93,9 @@ export default function RegisterView() {
     }
   };
 
-  const networkBlocked = authStatus && !authStatus.network_allowed;
+  const networkBlocked = Boolean(authStatus && !authStatus.network_allowed);
+  const formDisabled =
+    loading || networkBlocked || checkingStatus || Boolean(statusError);
   const isBootstrap = authStatus && !authStatus.has_admins;
 
   return (
@@ -87,21 +115,14 @@ export default function RegisterView() {
         </p>
 
         {networkBlocked && (
-          <div
-            className="analytics-form-error"
-            role="alert"
-            style={{
-              background: "#ef44441a",
-              border: "1px solid #ef4444",
-              color: "#ef4444",
-              padding: "12px",
-              borderRadius: "12px",
-              marginBottom: "16px",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
             Red no autorizada (403): Tu dispositivo o conexión no se encuentra en la red administrativa autorizada.
+          </div>
+        )}
+
+        {statusError && (
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
+            Error al verificar el estado de red/autenticación: {statusError}
           </div>
         )}
 
@@ -131,7 +152,7 @@ export default function RegisterView() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nombre de Administrador"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             required
             autoFocus
           />
@@ -146,7 +167,7 @@ export default function RegisterView() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="admin@ejemplo.com"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             required
           />
 
@@ -160,7 +181,7 @@ export default function RegisterView() {
             onChange={(e) => setPin(e.target.value)}
             placeholder="••••"
             minLength={4}
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             required
           />
 
@@ -175,7 +196,7 @@ export default function RegisterView() {
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 placeholder="GBM-ADMIN-..."
-                disabled={loading || networkBlocked}
+                disabled={formDisabled}
                 required
               />
             </>
@@ -190,7 +211,7 @@ export default function RegisterView() {
           <button
             className="analytics-primary-button"
             type="submit"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             style={{ marginTop: "18px" }}
           >
             {loading ? "Creando cuenta..." : isBootstrap ? "Crear Superadmin" : "Registrar Cuenta"}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -7,6 +7,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  clearAdminAuthSession,
   getAdminAuthToken,
   getAdminMe,
   getAnalyticsSummary,
@@ -21,6 +22,17 @@ import "./AnalyticsDashboard.css";
 
 const LIVE_SOURCE = "LIVE_API";
 const SIMULATED_SOURCE = "SIMULATED_50_SESSIONS";
+
+const gateErrorStyle = {
+  background: "#ef44441a",
+  border: "1px solid #ef4444",
+  color: "#ef4444",
+  padding: "12px",
+  borderRadius: "12px",
+  marginBottom: "16px",
+  fontWeight: 600,
+  fontSize: "14px",
+};
 
 const CATEGORY_META = [
   { key: "c1_visual_signs", label: "C1", nameKey: "analytics.competency.c1", max: 2 },
@@ -247,7 +259,9 @@ function csvEscape(value) {
 
 export default function AnalyticsDashboard() {
   const { t } = useI18n();
-  const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminAuthToken()));
+  const [authState, setAuthState] = useState("checking");
+  const authenticated = authState === "authenticated";
+  const restrictedNetwork = authState === "forbidden";
   const [currentUser, setCurrentUser] = useState(getStoredAdminUser);
   const [activeTab, setActiveTab] = useState("general");
   const [summary, setSummary] = useState(emptySummary);
@@ -258,22 +272,43 @@ export default function AnalyticsDashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
+    let active = true;
     const token = getAdminAuthToken();
     if (!token) {
-      window.location.href = "/login?next=/datos";
-      return;
+      clearAdminAuthSession();
+      window.location.replace("/login?next=/datos");
+      return () => {
+        active = false;
+      };
     }
     getAdminMe()
       .then((user) => {
+        if (!active) return;
         setCurrentUser(user);
-        setAuthenticated(true);
+        setAuthState("authenticated");
       })
-      .catch(() => {
-        window.location.href = "/login?next=/datos";
+      .catch((error) => {
+        if (!active) return;
+        if (error?.status === 403) {
+          setAuthState("forbidden");
+          return;
+        }
+        if (error?.status === 401) {
+          if (error?.sessionCleared || !getAdminAuthToken()) {
+            clearAdminAuthSession();
+            window.location.replace("/login?next=/datos");
+          }
+          return;
+        }
+        window.location.replace("/login?next=/datos");
       });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const loadLiveData = async () => {
+  const loadLiveData = useCallback(async () => {
+    if (!authenticated) return;
     setLoading(true);
     setApiError("");
     try {
@@ -283,6 +318,18 @@ export default function AnalyticsDashboard() {
       setSource(LIVE_SOURCE);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
+      if (error?.status === 401) {
+        if (error?.sessionCleared || !getAdminAuthToken()) {
+          clearAdminAuthSession();
+          setAuthState("checking");
+          window.location.replace("/login?next=/datos");
+        }
+        return;
+      }
+      if (error?.status === 403) {
+        setAuthState("forbidden");
+        return;
+      }
       setApiError(error.message);
       const simulation = generateSimulation();
       setSummary(simulation.summary);
@@ -291,13 +338,13 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authenticated]);
 
   useEffect(() => {
     if (authenticated) {
       loadLiveData();
     }
-  }, [authenticated]);
+  }, [authenticated, loadLiveData]);
 
   const metrics = useMemo(() => {
     const total = summary.funnel.total_sessions;
@@ -338,6 +385,18 @@ export default function AnalyticsDashboard() {
       setSource(LIVE_SOURCE);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
+      if (error?.status === 403) {
+        setAuthState("forbidden");
+        return;
+      }
+      if (error?.status === 401) {
+        if (error?.sessionCleared || !getAdminAuthToken()) {
+          clearAdminAuthSession();
+          setAuthState("checking");
+          window.location.replace("/login?next=/datos");
+        }
+        return;
+      }
       setApiError(error.message);
       const simulation = generateSimulation();
       setSummary(simulation.summary);
@@ -419,6 +478,45 @@ export default function AnalyticsDashboard() {
       "text/csv;charset=utf-8",
     );
   };
+
+  if (authState === "checking") {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Autenticación Requerida</p>
+          <h1>Verificando sesión</h1>
+          <p className="analytics-gate-copy">
+            Validando tus credenciales en la red autorizada...
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (restrictedNetwork) {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Acceso Denegado</p>
+          <h1>Red no autorizada</h1>
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
+            Acceso denegado (403): Tu dispositivo o conexión no se encuentra en la red autorizada para consultar analíticas administrativas.
+          </div>
+          <a className="analytics-text-link" href="/" style={{ marginTop: "16px" }}>
+            ← Volver al inicio
+          </a>
+        </section>
+      </main>
+    );
+  }
 
   if (!authenticated) {
     return (

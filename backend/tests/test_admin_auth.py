@@ -197,3 +197,127 @@ def test_pin_length_validation(test_client):
         json={"name": "Short Pin", "email": "short@cclas.org", "pin": "123"},
     )
     assert res_short.status_code == 422
+
+
+def test_admin_dashboard_stats_requires_auth_and_network_gate(test_client, db_session):
+    from app.models.access_points import AccessPoint, AccessPointType
+    from app.models.assessment_results import AssessmentResult, LiteracyClassification
+    from app.models.assessment_session import (
+        AgeRange,
+        AssessmentSession,
+        CompletionStatus,
+        SchoolingLevel,
+        WorkStatus,
+    )
+    from app.models.zone import Zone
+
+    user = AdminUser(
+        name="Dashboard Admin",
+        email="dashboard@cclas.org",
+        password_hash=hash_pin_or_password("dash-pass-123"),
+        role="admin",
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = create_signed_token(
+        {"sub": user.email, "uid": user.id, "role": user.role},
+        settings.admin_secret_key,
+    )
+
+    # 1. Without token -> 401 Unauthorized
+    res_no_auth = test_client.get("/admin/dashboard/stats")
+    assert res_no_auth.status_code == 401
+
+    # 2. Unauthorized IP even with valid Bearer token -> 403 Forbidden
+    res_bad_ip = test_client.get(
+        "/admin/dashboard/stats",
+        headers={
+            "X-Real-IP": "10.42.0.53",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    assert res_bad_ip.status_code == 403
+
+    # Seed representative assessment results for red/yellow/green
+    db_session.add_all(
+        [
+            AccessPoint(code="DIRECT_WEB", name="Direct Web", type=AccessPointType.WEB),
+            Zone(code="Z001", name="Test Zone"),
+        ]
+    )
+    db_session.flush()
+    db_session.add_all(
+        [
+            AssessmentSession(
+                session_id=501,
+                access_point_code="DIRECT_WEB",
+                assisted_mode=False,
+                age_range=AgeRange.AGE_18_24,
+                work_status=WorkStatus.STUDENT,
+                schooling_level=SchoolingLevel.TERTIARY,
+                zone_code="Z001",
+                location_declined=False,
+                completion_status=CompletionStatus.COMPLETED,
+                duration_seconds=60,
+            ),
+            AssessmentSession(
+                session_id=502,
+                access_point_code="DIRECT_WEB",
+                assisted_mode=False,
+                age_range=AgeRange.AGE_18_24,
+                work_status=WorkStatus.STUDENT,
+                schooling_level=SchoolingLevel.TERTIARY,
+                zone_code="Z001",
+                location_declined=False,
+                completion_status=CompletionStatus.COMPLETED,
+                duration_seconds=70,
+            ),
+        ]
+    )
+    db_session.flush()
+    db_session.add_all(
+        [
+            AssessmentResult(
+                session_id=501,
+                c1_visual_signs_score=1,
+                c2_sentence_comprehension_score=1,
+                c3_mobile_icons_score=0,
+                c4_cybersecurity_score=0,
+                total_literacy_score=2,
+                literacy_classification=LiteracyClassification.RED,
+            ),
+            AssessmentResult(
+                session_id=502,
+                c1_visual_signs_score=2,
+                c2_sentence_comprehension_score=2,
+                c3_mobile_icons_score=2,
+                c4_cybersecurity_score=3,
+                total_literacy_score=9,
+                literacy_classification=LiteracyClassification.GREEN,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    # 3. Valid admin token + allowed IP -> 200 OK with expected keys and lowercase distribution
+    res_ok = test_client.get(
+        "/admin/dashboard/stats",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_ok.status_code == 200
+    data = res_ok.json()
+    assert set(data.keys()) == {
+        "total_submissions",
+        "average_score_percentage",
+        "classification_distribution",
+    }
+    assert data["total_submissions"] == 2
+    assert data["average_score_percentage"] == 61.1
+    assert data["classification_distribution"] == {
+        "red": 1,
+        "yellow": 0,
+        "green": 1,
+    }

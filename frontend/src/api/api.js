@@ -32,8 +32,7 @@ export function clearAdminAuthSession() {
   window.sessionStorage.removeItem(USER_KEY);
 }
 
-function getAuthHeaders(extraHeaders = {}) {
-  const token = getAdminAuthToken();
+function getAuthHeaders(extraHeaders = {}, token = getAdminAuthToken()) {
   const headers = { ...extraHeaders };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -41,7 +40,7 @@ function getAuthHeaders(extraHeaders = {}) {
   return headers;
 }
 
-async function handleResponse(response, fallbackError) {
+async function handleResponse(response, fallbackError, requestToken) {
   if (!response.ok) {
     const message = await response
       .json()
@@ -54,7 +53,16 @@ async function handleResponse(response, fallbackError) {
       })
       .catch(() => null);
 
-    throw new Error(message || fallbackError);
+    const error = new Error(message || fallbackError);
+    error.status = response.status;
+    if (response.status === 401) {
+      if (requestToken && getAdminAuthToken() === requestToken) {
+        clearAdminAuthSession();
+        error.sessionCleared = true;
+      }
+    }
+
+    throw error;
   }
 
   return response.json();
@@ -153,11 +161,12 @@ export async function registerAdmin({ name, email, pin, invite_code }) {
 }
 
 export async function getAdminMe({ signal } = {}) {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/api/auth/me`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders({}, token),
     signal,
   });
-  return handleResponse(response, "Sesión no válida o expirada");
+  return handleResponse(response, "Sesión no válida o expirada", token);
 }
 
 export async function logoutAdmin() {
@@ -174,56 +183,68 @@ export async function logoutAdmin() {
 }
 
 export async function getAnalyticsSummary({ signal } = {}) {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/analytics/summary`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders({}, token),
     signal,
   });
-  return handleResponse(response, "Failed to load analytics summary");
+  return handleResponse(response, "Failed to load analytics summary", token);
 }
 
 export async function simulateAnalyticsSample(count = 50) {
+  const token = getAdminAuthToken();
   const response = await fetch(
     `${API_URL}/analytics/simulate?count=${encodeURIComponent(count)}`,
     {
       method: "POST",
-      headers: getAuthHeaders({
-        "Content-Type": "application/json",
-      }),
+      headers: getAuthHeaders(
+        {
+          "Content-Type": "application/json",
+        },
+        token,
+      ),
     },
   );
-  return handleResponse(response, "Failed to simulate analytics sample");
+  return handleResponse(response, "Failed to simulate analytics sample", token);
 }
 
 export async function restoreAnalyticsData() {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/analytics/restore`, {
     method: "POST",
-    headers: getAuthHeaders({
-      "Content-Type": "application/json",
-    }),
+    headers: getAuthHeaders(
+      {
+        "Content-Type": "application/json",
+      },
+      token,
+    ),
   });
-  return handleResponse(response, "Failed to restore live analytics data");
+  return handleResponse(response, "Failed to restore live analytics data", token);
 }
 
 export async function getVulnerabilityRanking({ signal } = {}) {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/analytics/vulnerability-ranking`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders({}, token),
     signal,
   });
-  return handleResponse(response, "Failed to load zone vulnerability ranking");
+  return handleResponse(response, "Failed to load zone vulnerability ranking", token);
 }
 
 export async function getKioskC4Dispersal({ signal } = {}) {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/analytics/kiosk-c4-dispersal`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders({}, token),
     signal,
   });
-  return handleResponse(response, "Failed to load kiosk C4 dispersal metrics");
+  return handleResponse(response, "Failed to load kiosk C4 dispersal metrics", token);
 }
 
 export async function getAdminDashboardStats({ signal } = {}) {
+  const token = getAdminAuthToken();
   const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders({}, token),
     signal,
   });
-  return handleResponse(response, "Failed to load dashboard statistics");
+  return handleResponse(response, "Failed to load dashboard statistics", token);
 }

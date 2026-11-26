@@ -1,21 +1,34 @@
 import { useEffect, useState } from "react";
 import { getAuthStatus, loginAdmin, setAdminAuthSession } from "../../api/api";
-import { LanguageSelector, useI18n } from "../../utils/i18n";
+import { sanitizeNextUrl } from "../../utils/authRedirect";
+import { LanguageSelector } from "../../utils/i18n";
+
+const gateErrorStyle = {
+  background: "#ef44441a",
+  border: "1px solid #ef4444",
+  color: "#ef4444",
+  padding: "12px",
+  borderRadius: "12px",
+  marginBottom: "16px",
+  fontWeight: 600,
+  fontSize: "14px",
+};
 
 export default function LoginView() {
-  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
+  const [statusError, setStatusError] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
 
   // Read ?next= query param
-  const nextUrl =
+  const rawNext =
     typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("next") || "/admin"
-      : "/admin";
+      ? new URLSearchParams(window.location.search).get("next")
+      : null;
+  const nextUrl = sanitizeNextUrl(rawNext);
 
   useEffect(() => {
     let active = true;
@@ -26,9 +39,15 @@ export default function LoginView() {
           setCheckingStatus(false);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (active) {
-          setAuthStatus({ network_allowed: true, has_admins: true });
+          if (err?.status === 403) {
+            setAuthStatus({ network_allowed: false });
+          } else {
+            setStatusError(
+              err?.message || "No se pudo verificar el estado de red/autenticación.",
+            );
+          }
           setCheckingStatus(false);
         }
       });
@@ -50,7 +69,7 @@ export default function LoginView() {
       const data = await loginAdmin({ email, pin });
       if (data?.token) {
         setAdminAuthSession(data.token, data.user);
-        window.location.href = nextUrl;
+        window.location.replace(nextUrl);
       }
     } catch (err) {
       setError(err.message || "Error al iniciar sesión.");
@@ -59,7 +78,9 @@ export default function LoginView() {
     }
   };
 
-  const networkBlocked = authStatus && !authStatus.network_allowed;
+  const networkBlocked = Boolean(authStatus && !authStatus.network_allowed);
+  const formDisabled =
+    loading || networkBlocked || checkingStatus || Boolean(statusError);
 
   return (
     <main className="analytics-gate">
@@ -76,21 +97,14 @@ export default function LoginView() {
         </p>
 
         {networkBlocked && (
-          <div
-            className="analytics-form-error"
-            role="alert"
-            style={{
-              background: "#ef44441a",
-              border: "1px solid #ef4444",
-              color: "#ef4444",
-              padding: "12px",
-              borderRadius: "12px",
-              marginBottom: "16px",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
             Red no autorizada (403): Tu dispositivo o conexión no se encuentra en la red administrativa autorizada.
+          </div>
+        )}
+
+        {statusError && (
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
+            Error al verificar el estado de red/autenticación: {statusError}
           </div>
         )}
 
@@ -109,7 +123,10 @@ export default function LoginView() {
             }}
           >
             Modo Inicial: No hay administradores registrados.{" "}
-            <a href="/register" style={{ color: "#38bdf8", textDecoration: "underline" }}>
+            <a
+              href={`/register?next=${encodeURIComponent(nextUrl)}`}
+              style={{ color: "#38bdf8", textDecoration: "underline" }}
+            >
               Crea la cuenta principal aquí
             </a>.
           </div>
@@ -124,7 +141,7 @@ export default function LoginView() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="admin@ejemplo.com"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             required
             autoFocus
           />
@@ -139,7 +156,7 @@ export default function LoginView() {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="••••"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             required
           />
 
@@ -152,7 +169,7 @@ export default function LoginView() {
           <button
             className="analytics-primary-button"
             type="submit"
-            disabled={loading || networkBlocked}
+            disabled={formDisabled}
             style={{ marginTop: "18px" }}
           >
             {loading ? "Verificando..." : "Iniciar Sesión"}
