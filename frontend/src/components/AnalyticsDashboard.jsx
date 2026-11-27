@@ -1,24 +1,46 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
+  GeoJSON,
   MapContainer,
   Popup,
   TileLayer,
+  Tooltip,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  clearAdminAuthSession,
+  getAdminAuthToken,
+  getAdminMe,
   getAnalyticsSummary,
+  getStoredAdminUser,
+  logoutAdmin,
   restoreAnalyticsData,
   simulateAnalyticsSample,
 } from "../api/api";
+import {
+  PANAMA_CANAL_CORRIDOR_GEOJSON,
+  PANAMA_METRO_GRID_GEOJSON,
+  PANAMA_METRO_LAND_GEOJSON,
+  TRANSPARENT_TILE_DATA_URI,
+} from "../utils/panamaOfflineBasemap";
 import { LanguageSelector, useI18n } from "../utils/i18n";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import "./AnalyticsDashboard.css";
 
-const ANALYTICS_PIN = import.meta.env.VITE_ANALYTICS_PIN || "2026";
-const LEGACY_PIN = "7058";
 const LIVE_SOURCE = "LIVE_API";
 const SIMULATED_SOURCE = "SIMULATED_50_SESSIONS";
+
+const gateErrorStyle = {
+  background: "#ef44441a",
+  border: "1px solid #ef4444",
+  color: "#ef4444",
+  padding: "12px",
+  borderRadius: "12px",
+  marginBottom: "16px",
+  fontWeight: 600,
+  fontSize: "14px",
+};
 
 const CATEGORY_META = [
   { key: "c1_visual_signs", label: "C1", nameKey: "analytics.competency.c1", max: 2 },
@@ -245,18 +267,74 @@ function csvEscape(value) {
 
 export default function AnalyticsDashboard() {
   const { t } = useI18n();
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authState, setAuthState] = useState("checking");
+  const authenticated = authState === "authenticated";
+  const restrictedNetwork = authState === "forbidden";
+  const [currentUser, setCurrentUser] = useState(getStoredAdminUser);
   const [activeTab, setActiveTab] = useState("general");
-  const [pin, setPin] = useState("");
-  const [hasPinError, setHasPinError] = useState(false);
   const [summary, setSummary] = useState(emptySummary);
   const [zones, setZones] = useState([]);
   const [source, setSource] = useState(LIVE_SOURCE);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [tilesOffline, setTilesOffline] = useState(
+    typeof navigator !== "undefined" && !navigator.onLine,
+  );
+  const [tilesLoaded, setTilesLoaded] = useState(false);
 
-  const loadLiveData = async () => {
+  useEffect(() => {
+    const handleOnline = () => setTilesOffline(false);
+    const handleOffline = () => {
+      setTilesOffline(true);
+      setTilesLoaded(false);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const token = getAdminAuthToken();
+    if (!token) {
+      clearAdminAuthSession();
+      window.location.replace("/login?next=/datos");
+      return () => {
+        active = false;
+      };
+    }
+    getAdminMe()
+      .then((user) => {
+        if (!active) return;
+        setCurrentUser(user);
+        setAuthState("authenticated");
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error?.status === 403) {
+          setAuthState("forbidden");
+          return;
+        }
+        if (error?.status === 401) {
+          if (error?.sessionCleared || !getAdminAuthToken()) {
+            clearAdminAuthSession();
+            window.location.replace("/login?next=/datos");
+          }
+          return;
+        }
+        window.location.replace("/login?next=/datos");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const loadLiveData = useCallback(async () => {
+    if (!authenticated) return;
     setLoading(true);
     setApiError("");
     try {
@@ -266,6 +344,18 @@ export default function AnalyticsDashboard() {
       setSource(LIVE_SOURCE);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
+      if (error?.status === 401) {
+        if (error?.sessionCleared || !getAdminAuthToken()) {
+          clearAdminAuthSession();
+          setAuthState("checking");
+          window.location.replace("/login?next=/datos");
+        }
+        return;
+      }
+      if (error?.status === 403) {
+        setAuthState("forbidden");
+        return;
+      }
       setApiError(error.message);
       const simulation = generateSimulation();
       setSummary(simulation.summary);
@@ -274,13 +364,13 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authenticated]);
 
   useEffect(() => {
     if (authenticated) {
       loadLiveData();
     }
-  }, [authenticated]);
+  }, [authenticated, loadLiveData]);
 
   const metrics = useMemo(() => {
     const total = summary.funnel.total_sessions;
@@ -309,16 +399,6 @@ export default function AnalyticsDashboard() {
 
   const redZones = zones.filter((zone) => zone.status === "RED");
 
-  const handlePinSubmit = (event) => {
-    event.preventDefault();
-    if (pin === ANALYTICS_PIN || pin === LEGACY_PIN) {
-      setAuthenticated(true);
-      setHasPinError(false);
-    } else {
-      setHasPinError(true);
-    }
-  };
-
   const handleSimulation = async () => {
     setLoading(true);
     setApiError("");
@@ -331,6 +411,18 @@ export default function AnalyticsDashboard() {
       setSource(LIVE_SOURCE);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
+      if (error?.status === 403) {
+        setAuthState("forbidden");
+        return;
+      }
+      if (error?.status === 401) {
+        if (error?.sessionCleared || !getAdminAuthToken()) {
+          clearAdminAuthSession();
+          setAuthState("checking");
+          window.location.replace("/login?next=/datos");
+        }
+        return;
+      }
       setApiError(error.message);
       const simulation = generateSimulation();
       setSummary(simulation.summary);
@@ -413,6 +505,45 @@ export default function AnalyticsDashboard() {
     );
   };
 
+  if (authState === "checking") {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Autenticación Requerida</p>
+          <h1>Verificando sesión</h1>
+          <p className="analytics-gate-copy">
+            Validando tus credenciales en la red autorizada...
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (restrictedNetwork) {
+    return (
+      <main className="analytics-gate">
+        <section className="analytics-gate-card">
+          <div className="analytics-gate-top">
+            <div className="analytics-mark">CCLAS</div>
+            <LanguageSelector variant="light" />
+          </div>
+          <p className="analytics-eyebrow">Acceso Denegado</p>
+          <h1>Red no autorizada</h1>
+          <div className="analytics-form-error" role="alert" style={gateErrorStyle}>
+            Acceso denegado (403): Tu dispositivo o conexión no se encuentra en la red autorizada para consultar analíticas administrativas.
+          </div>
+          <a className="analytics-text-link" href="/" style={{ marginTop: "16px" }}>
+            ← Volver al inicio
+          </a>
+        </section>
+      </main>
+    );
+  }
+
   if (!authenticated) {
     return (
       <main className="analytics-gate">
@@ -421,34 +552,27 @@ export default function AnalyticsDashboard() {
             <div className="analytics-mark">CCLAS</div>
             <LanguageSelector variant="light" />
           </div>
-          <p className="analytics-eyebrow">{t("analytics.gate.eyebrow")}</p>
-          <h1>{t("analytics.gate.title")}</h1>
+          <p className="analytics-eyebrow">Autenticación Requerida</p>
+          <h1>Acceso Restringido</h1>
           <p className="analytics-gate-copy">
-            {t("analytics.gate.copy")}
+            Se requiere autenticación de administrador en la red autorizada para consultar este panel.
           </p>
-          <form onSubmit={handlePinSubmit}>
-            <label htmlFor="analytics-pin">{t("analytics.gate.pinLabel")}</label>
-            <input
-              id="analytics-pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              value={pin}
-              onChange={(event) => setPin(event.target.value)}
-              placeholder="••••"
-              aria-invalid={hasPinError}
-              autoFocus
-            />
-            {hasPinError && (
-              <p className="analytics-form-error" role="alert">
-                {t("analytics.gate.pinError")}
-              </p>
-            )}
-            <button className="analytics-primary-button" type="submit">
-              {t("analytics.gate.unlock")}
-            </button>
-          </form>
-          <a className="analytics-text-link" href="/">{t("analytics.gate.backLink")}</a>
+          <a
+            className="analytics-primary-button"
+            href="/login?next=/datos"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              marginTop: "16px",
+            }}
+          >
+            Iniciar Sesión
+          </a>
+          <a className="analytics-text-link" href="/" style={{ marginTop: "16px" }}>
+            ← Volver al inicio
+          </a>
         </section>
       </main>
     );
@@ -467,6 +591,7 @@ export default function AnalyticsDashboard() {
   const classificationShare = (count) =>
     classifiedTotal ? (count / classifiedTotal) * 100 : 0;
   const isLiveSource = source === LIVE_SOURCE;
+  const vectorOpacity = tilesLoaded ? 0 : 1;
   const action2Title =
     redZones.length === 1
       ? t("analytics.actionsPanel.item2TitleOne")
@@ -511,11 +636,36 @@ export default function AnalyticsDashboard() {
               {isLiveSource ? t("analytics.source.live") : t("analytics.source.demo")}
             </span>
             <div className="analytics-command-actions">
+              {currentUser && (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--text-dim, #9ca3af)",
+                    padding: "0 6px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  👤 {currentUser.name}
+                </span>
+              )}
               <button type="button" onClick={handleSimulation} title={t("analytics.actions.simulateTitle")} aria-label={t("analytics.actions.simulateAria")}>{t("analytics.actions.simulate")}</button>
               <button type="button" onClick={handleRestore} title={t("analytics.actions.restoreTitle")} aria-label={t("analytics.actions.restoreAria")}>{t("analytics.actions.restore")}</button>
               <button type="button" className="is-export" onClick={handleExportCsv} title={t("analytics.actions.csvTitle")} aria-label={t("analytics.actions.csvAria")}>CSV</button>
               <button type="button" className="is-export" onClick={handleExportJson} title={t("analytics.actions.jsonTitle")} aria-label={t("analytics.actions.jsonAria")}>JSON</button>
-              <button type="button" className="is-lock" onClick={() => setAuthenticated(false)} title={t("analytics.actions.lockTitle")} aria-label={t("analytics.actions.lockAria")}>{t("analytics.actions.lock")}</button>
+              <button
+                type="button"
+                className="is-lock"
+                onClick={async () => {
+                  await logoutAdmin();
+                  window.location.href = "/login?next=/datos";
+                }}
+                title={t("analytics.actions.lockTitle")}
+                aria-label={t("analytics.actions.lockAria")}
+              >
+                {t("analytics.actions.lock")}
+              </button>
             </div>
             <LanguageSelector />
           </div>
@@ -704,11 +854,53 @@ export default function AnalyticsDashboard() {
               </article>
 
               <article className="analytics-panel analytics-map-panel">
-                <div className="analytics-panel-heading"><div><p className="analytics-eyebrow">{t("analytics.map.eyebrow")}</p><h2>{t("analytics.map.title")}</h2></div><span className="analytics-panel-total">{t("analytics.map.country")}</span></div>
+                <div className="analytics-panel-heading">
+                  <div><p className="analytics-eyebrow">{t("analytics.map.eyebrow")}</p><h2>{t("analytics.map.title")}</h2></div>
+                  <div className="analytics-map-heading-side">
+                    {tilesOffline && (
+                      <span className="analytics-map-offline-badge" role="status">
+                        Mapa vectorial · Modo LAN sin internet
+                        <button
+                          type="button"
+                          className="analytics-map-retry"
+                          onClick={() => {
+                            setTilesOffline(false);
+                            setTilesLoaded(false);
+                          }}
+                        >
+                          Reintentar
+                        </button>
+                      </span>
+                    )}
+                    <span className="analytics-panel-total">{t("analytics.map.country")}</span>
+                  </div>
+                </div>
                 <MapContainer center={[9.05, -79.55]} zoom={9} scrollWheelZoom={false} className="analytics-map">
-                  <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <GeoJSON data={PANAMA_METRO_LAND_GEOJSON} interactive={false} style={{ color: "#91aebf", weight: 1, fillColor: "#eef2e6", fillOpacity: vectorOpacity, opacity: vectorOpacity }} />
+                  <GeoJSON data={PANAMA_CANAL_CORRIDOR_GEOJSON} interactive={false} style={{ color: "#6fa8c7", weight: 1, fillColor: "#b9dced", fillOpacity: vectorOpacity, opacity: vectorOpacity }} />
+                  <GeoJSON data={PANAMA_METRO_GRID_GEOJSON} interactive={false} style={{ color: "#7395ad", weight: 0.7, opacity: vectorOpacity * 0.35 }} />
+                  {!tilesOffline && (
+                    <TileLayer
+                      attribution='&copy; OpenStreetMap contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      errorTileUrl={TRANSPARENT_TILE_DATA_URI}
+                      eventHandlers={{
+                        tileerror: () => {
+                          setTilesOffline(true);
+                          setTilesLoaded(false);
+                        },
+                        tileload: () => {
+                          setTilesOffline(false);
+                          setTilesLoaded(true);
+                        },
+                      }}
+                    />
+                  )}
                   {zones.map((zone) => (
                     <CircleMarker key={zone.code} center={zone.position} radius={12} pathOptions={{ color: STATUS_META[zone.status].color, fillColor: STATUS_META[zone.status].color, fillOpacity: 0.75 }}>
+                      <Tooltip direction="top" offset={[0, -6]}>
+                        <strong>{zone.code} · {zone.name}</strong><br />{t("analytics.map.popupStats", { total: zone.total, rate: round(zone.completionRate) })}
+                      </Tooltip>
                       <Popup><strong>{zone.code} · {zone.name}</strong><br />{t("analytics.map.popupStats", { total: zone.total, rate: round(zone.completionRate) })}<br />{t("analytics.map.popupStatus", { status: t(STATUS_META[zone.status].tagKey) })}</Popup>
                     </CircleMarker>
                   ))}

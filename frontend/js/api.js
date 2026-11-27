@@ -32,8 +32,21 @@ function clampInt(val, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+const cclasGenerateSessionId = globalThis.cclasGenerateSessionId || (() => {
+  if (globalThis.crypto?.randomUUID) {
+    return "SES-" + globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+  }
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(10);
+    globalThis.crypto.getRandomValues(bytes);
+    return "SES-" + Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+  return "SES-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+});
+globalThis.cclasGenerateSessionId = cclasGenerateSessionId;
+
 function normalizeSessionPayload(p = {}) {
-  const rawId = String(p.session_id || `SES-${Date.now().toString(36)}`).replace(/[^A-Za-z0-9_-]/g, "");
+  const rawId = String(p.session_id || cclasGenerateSessionId()).replace(/[^A-Za-z0-9_-]/g, "");
   const session_id = (rawId.length >= 3 ? rawId : `SES-${rawId}`).slice(0, 40);
   const kioskCandidate = p.kiosk_id || p.access_point_code || "DIRECT_WEB";
   const zoneCandidate = p.zone_code || p.zone_id || "DECLINED";
@@ -81,7 +94,7 @@ async function flushOutbox() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!r.ok && r.status !== 422) left.push(payload);
+      if (!r.ok && r.status !== 422 && r.status !== 409) left.push(payload);
     } catch (e) {
       left.push(payload);
     }

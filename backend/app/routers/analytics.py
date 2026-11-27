@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.admin_user import AdminUser
+from app.routers.auth import get_current_admin
 from app.schemas.analytics import (
+    AdminDashboardStatsResponse,
     KioskC4DispersalResponse,
     LegacyAnalyticsSummaryResponse,
     SimulateResponse,
@@ -18,13 +21,17 @@ from app.services.analytics import (
     seed_simulated_sessions,
 )
 
-
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+router = APIRouter(
+    prefix="/analytics",
+    tags=["analytics"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 
 @router.get("/summary", response_model=LegacyAnalyticsSummaryResponse)
 def read_analytics_summary(
     db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
 ) -> LegacyAnalyticsSummaryResponse:
     return get_analytics_summary(db)
 
@@ -33,6 +40,7 @@ def read_analytics_summary(
 def run_analytics_simulation(
     count: int = 50,
     db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
 ) -> SimulateResponse:
     return seed_simulated_sessions(db, count=count)
 
@@ -40,6 +48,7 @@ def run_analytics_simulation(
 @router.post("/restore", response_model=LegacyAnalyticsSummaryResponse)
 def run_analytics_restore(
     db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
 ) -> LegacyAnalyticsSummaryResponse:
     return restore_live_sessions(db)
 
@@ -50,6 +59,7 @@ def run_analytics_restore(
 )
 def read_zone_vulnerability_ranking(
     db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
 ) -> ZoneVulnerabilityRankingResponse:
     return get_zone_vulnerability_ranking(db)
 
@@ -60,6 +70,34 @@ def read_zone_vulnerability_ranking(
 )
 def read_kiosk_c4_dispersal(
     db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
 ) -> KioskC4DispersalResponse:
     return get_kiosk_c4_dispersal(db)
 
+
+admin_router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_current_admin)],
+)
+
+
+@admin_router.get("/dashboard/stats", response_model=AdminDashboardStatsResponse)
+def read_admin_dashboard_stats(
+    db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
+) -> AdminDashboardStatsResponse:
+    summary = get_analytics_summary(db)
+    counts = {
+        item.classification.lower(): item.count
+        for item in summary.classification_distribution
+    }
+    return AdminDashboardStatsResponse(
+        total_submissions=summary.total_submissions,
+        average_score_percentage=summary.average_score_percentage,
+        classification_distribution={
+            "red": counts.get("red", 0),
+            "yellow": counts.get("yellow", 0),
+            "green": counts.get("green", 0),
+        },
+    )

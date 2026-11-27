@@ -1,3 +1,8 @@
+import os
+
+os.environ.setdefault("ADMIN_SECRET_KEY", "test-only-admin-secret-key-0123456789abcdef")
+os.environ.setdefault("ADMIN_INVITE_CODE", "TEST-ONLY-INVITE-CODE")
+
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker

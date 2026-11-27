@@ -11,7 +11,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     window.location.pathname.startsWith('/datos') ||
     window.location.pathname.startsWith('/admin') ||
     window.location.pathname.startsWith('/qr') ||
-    window.location.pathname.startsWith('/form')
+    window.location.pathname.startsWith('/login') ||
+    window.location.pathname.startsWith('/register')
 
   if (import.meta.env.DEV || isDashboardRoute) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -26,6 +27,12 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         }
       })
     }
+  } else {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.update()
+      }
+    })
   }
 }
 

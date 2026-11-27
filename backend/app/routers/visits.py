@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.canonical import OPT_OUT_OUTCOMES, VISIT_OUTCOMES, VISIT_RANK
 from app.core.database import get_db
 from app.models.visit import DailyCounter, Visit
-from app.routers.sessions import require_pin
+from app.routers.auth import get_current_admin
 from app.schemas.visit import VISIT_ID_PATTERN, VisitIn, VisitOut
 
 router = APIRouter(prefix="/api", tags=["visits"])
@@ -54,12 +54,12 @@ def put_visit(payload: VisitIn, response: Response, visit_id: str = Path(pattern
     return VisitOut.model_validate(row)
 
 
-@router.get("/visits", response_model=list[VisitOut], dependencies=[Depends(require_pin)])
+@router.get("/visits", response_model=list[VisitOut], dependencies=[Depends(get_current_admin)])
 def list_visits(limit: int = 5000, db: Session = Depends(get_db)):
     return db.query(Visit).order_by(Visit.first_seen_at.desc()).limit(min(limit, 20000)).all()
 
 
-@router.get("/visits/summary", dependencies=[Depends(require_pin)])
+@router.get("/visits/summary", dependencies=[Depends(get_current_admin)])
 def visits_summary(days: int = 30, db: Session = Depends(get_db)):
     """Totales de entradas (con y sin fila) por resultado, por kiosco y por día."""
     outcomes = {k: 0 for k in VISIT_OUTCOMES + OPT_OUT_OUTCOMES}

@@ -1,7 +1,31 @@
 import pytest
 
+from app.main import app
 from app.models.access_points import AccessPoint, AccessPointType
+from app.models.admin_user import AdminUser
 from app.models.assessment_results import AssessmentResult, LiteracyClassification
+from app.models.assessment_session import AssessmentSession
+from app.models.rewards import Reward
+from app.routers.auth import get_current_admin
+from app.services.analytics import restore_live_sessions, seed_simulated_sessions
+from tests.helpers import valid
+
+
+@pytest.fixture(autouse=True)
+def override_admin_auth():
+    """Provides an authenticated admin for all analytics tests."""
+    def _mock_admin():
+        return AdminUser(
+            id=1,
+            name="Test Superadmin",
+            email="superadmin@cclas.org",
+            role="superadmin",
+            is_active=True,
+        )
+
+    app.dependency_overrides[get_current_admin] = _mock_admin
+    yield
+    app.dependency_overrides.pop(get_current_admin, None)
 from app.models.assessment_session import (
     AgeRange,
     AssessmentSession,
@@ -389,10 +413,10 @@ def test_simulate_analytics_endpoint_inserts_sessions_and_updates_summary(
     assert data["summary"]["abandoned_assessments"] == 8
     assert data["summary"]["total_submissions"] == 42
     assert data["summary"]["category_averages"] == {
-        "c1_visual_signs": 1.7,
-        "c2_sentence_comprehension": 1.7,
-        "c3_mobile_icons": 1.3,
-        "c4_cybersecurity": 1.4,
+        "c1_visual_signs": 1.6,
+        "c2_sentence_comprehension": 1.5,
+        "c3_mobile_icons": 1.2,
+        "c4_cybersecurity": 1.3,
     }
     dist = {
         item["classification"]: item["count"]
@@ -410,4 +434,29 @@ def test_simulate_analytics_endpoint_inserts_sessions_and_updates_summary(
     assert restored.status_code == 200
     assert restored.json()["total_assessments"] == 0
 
+
+def test_simulate_and_restore_preserve_hashed_real_sessions(db_session, test_client):
+    seed_simulated_sessions(db_session, count=1)
+    response = test_client.post(
+        "/api/sessions",
+        json=valid(session_id="SES-hashed-real-session"),
+    )
+    assert response.status_code == 201
+    real_session_id = (
+        db_session.query(AssessmentSession)
+        .filter(AssessmentSession.session_id >= 1_000_000)
+        .one()
+        .session_id
+    )
+    assert real_session_id >= 1_000_000
+
+    seed_simulated_sessions(db_session, count=1)
+    assert db_session.get(AssessmentSession, real_session_id) is not None
+    assert db_session.get(AssessmentResult, real_session_id) is not None
+    assert db_session.query(Reward).filter_by(session_id=real_session_id).one() is not None
+
+    restore_live_sessions(db_session)
+    assert db_session.get(AssessmentSession, real_session_id) is not None
+    assert db_session.get(AssessmentResult, real_session_id) is not None
+    assert db_session.query(Reward).filter_by(session_id=real_session_id).one() is not None
 

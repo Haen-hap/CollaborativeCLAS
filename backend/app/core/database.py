@@ -24,7 +24,7 @@ def check_database_connection() -> bool:
 
             return True
 
-    except SQLAlchemyError as e:
-        print(e)
+    except SQLAlchemyError:
+        return False
     return False
 

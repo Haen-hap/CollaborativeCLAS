@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -123,4 +125,12 @@ class SimulateResponse(BaseModel):
     completed_sessions: int = Field(ge=0)
     abandoned_sessions: int = Field(ge=0)
     summary: LegacyAnalyticsSummaryResponse
+
+
+class AdminDashboardStatsResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    total_submissions: int = Field(ge=0)
+    average_score_percentage: Optional[float] = Field(default=None, ge=0, le=100)
+    classification_distribution: dict[str, int]
 
