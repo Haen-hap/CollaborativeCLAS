@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
+  GeoJSON,
   MapContainer,
   Popup,
   TileLayer,
+  Tooltip,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -16,6 +18,12 @@ import {
   restoreAnalyticsData,
   simulateAnalyticsSample,
 } from "../api/api";
+import {
+  PANAMA_CANAL_CORRIDOR_GEOJSON,
+  PANAMA_METRO_GRID_GEOJSON,
+  PANAMA_METRO_LAND_GEOJSON,
+  TRANSPARENT_TILE_DATA_URI,
+} from "../utils/panamaOfflineBasemap";
 import { LanguageSelector, useI18n } from "../utils/i18n";
 import IntelligenceDashboard from "./admin/IntelligenceDashboard";
 import "./AnalyticsDashboard.css";
@@ -270,6 +278,24 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [tilesOffline, setTilesOffline] = useState(
+    typeof navigator !== "undefined" && !navigator.onLine,
+  );
+  const [tilesLoaded, setTilesLoaded] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setTilesOffline(false);
+    const handleOffline = () => {
+      setTilesOffline(true);
+      setTilesLoaded(false);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -565,6 +591,7 @@ export default function AnalyticsDashboard() {
   const classificationShare = (count) =>
     classifiedTotal ? (count / classifiedTotal) * 100 : 0;
   const isLiveSource = source === LIVE_SOURCE;
+  const vectorOpacity = tilesLoaded ? 0 : 1;
   const action2Title =
     redZones.length === 1
       ? t("analytics.actionsPanel.item2TitleOne")
@@ -827,11 +854,53 @@ export default function AnalyticsDashboard() {
               </article>
 
               <article className="analytics-panel analytics-map-panel">
-                <div className="analytics-panel-heading"><div><p className="analytics-eyebrow">{t("analytics.map.eyebrow")}</p><h2>{t("analytics.map.title")}</h2></div><span className="analytics-panel-total">{t("analytics.map.country")}</span></div>
+                <div className="analytics-panel-heading">
+                  <div><p className="analytics-eyebrow">{t("analytics.map.eyebrow")}</p><h2>{t("analytics.map.title")}</h2></div>
+                  <div className="analytics-map-heading-side">
+                    {tilesOffline && (
+                      <span className="analytics-map-offline-badge" role="status">
+                        Mapa vectorial · Modo LAN sin internet
+                        <button
+                          type="button"
+                          className="analytics-map-retry"
+                          onClick={() => {
+                            setTilesOffline(false);
+                            setTilesLoaded(false);
+                          }}
+                        >
+                          Reintentar
+                        </button>
+                      </span>
+                    )}
+                    <span className="analytics-panel-total">{t("analytics.map.country")}</span>
+                  </div>
+                </div>
                 <MapContainer center={[9.05, -79.55]} zoom={9} scrollWheelZoom={false} className="analytics-map">
-                  <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <GeoJSON data={PANAMA_METRO_LAND_GEOJSON} interactive={false} style={{ color: "#91aebf", weight: 1, fillColor: "#eef2e6", fillOpacity: vectorOpacity, opacity: vectorOpacity }} />
+                  <GeoJSON data={PANAMA_CANAL_CORRIDOR_GEOJSON} interactive={false} style={{ color: "#6fa8c7", weight: 1, fillColor: "#b9dced", fillOpacity: vectorOpacity, opacity: vectorOpacity }} />
+                  <GeoJSON data={PANAMA_METRO_GRID_GEOJSON} interactive={false} style={{ color: "#7395ad", weight: 0.7, opacity: vectorOpacity * 0.35 }} />
+                  {!tilesOffline && (
+                    <TileLayer
+                      attribution='&copy; OpenStreetMap contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      errorTileUrl={TRANSPARENT_TILE_DATA_URI}
+                      eventHandlers={{
+                        tileerror: () => {
+                          setTilesOffline(true);
+                          setTilesLoaded(false);
+                        },
+                        tileload: () => {
+                          setTilesOffline(false);
+                          setTilesLoaded(true);
+                        },
+                      }}
+                    />
+                  )}
                   {zones.map((zone) => (
                     <CircleMarker key={zone.code} center={zone.position} radius={12} pathOptions={{ color: STATUS_META[zone.status].color, fillColor: STATUS_META[zone.status].color, fillOpacity: 0.75 }}>
+                      <Tooltip direction="top" offset={[0, -6]}>
+                        <strong>{zone.code} · {zone.name}</strong><br />{t("analytics.map.popupStats", { total: zone.total, rate: round(zone.completionRate) })}
+                      </Tooltip>
                       <Popup><strong>{zone.code} · {zone.name}</strong><br />{t("analytics.map.popupStats", { total: zone.total, rate: round(zone.completionRate) })}<br />{t("analytics.map.popupStatus", { status: t(STATUS_META[zone.status].tagKey) })}</Popup>
                     </CircleMarker>
                   ))}
