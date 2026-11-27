@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.zones_data import KIOSKS, ZONES
@@ -26,7 +26,7 @@ from app.services.scoring import classify
 router = APIRouter(prefix="/api", tags=["sessions"])
 
 OFFICIAL_KIOSK_MAP = {c: (n, z) for c, n, z in KIOSKS}
-OFFICIAL_ZONE_MAP = dict(ZONES)
+ZONES_MAP = {"DECLINED": "Location declined", **dict(ZONES)}
 
 
 def _session_id_to_int(raw_id: str) -> int:
@@ -38,13 +38,8 @@ def _session_id_to_int(raw_id: str) -> int:
 
 
 def _ensure_catalog_entry(db: Session, kiosk_id: str, zone_code: str) -> None:
-    if not db.get(Zone, "DECLINED"):
-        db.add(Zone(code="DECLINED", name="Location declined"))
-    for z_code, z_name in ZONES:
-        if not db.get(Zone, z_code):
-            db.add(Zone(code=z_code, name=z_name))
-    if zone_code and not db.get(Zone, zone_code):
-        db.add(Zone(code=zone_code, name=OFFICIAL_ZONE_MAP.get(zone_code, zone_code)))
+    if not db.get(Zone, zone_code):
+        db.add(Zone(code=zone_code, name=ZONES_MAP.get(zone_code, zone_code)))
     if not db.get(AccessPoint, kiosk_id):
         ap_name = OFFICIAL_KIOSK_MAP.get(kiosk_id, (kiosk_id, None))[0]
         ap_type = AccessPointType.WEB if kiosk_id == "DIRECT_WEB" else AccessPointType.KIOSK
@@ -59,7 +54,16 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
         raise HTTPException(status_code=422, detail="Kiosco o valores no válidos")
 
     numeric_id = _session_id_to_int(payload.session_id)
-    session_row = db.get(AssessmentSession, numeric_id)
+    session_row = (
+        db.query(AssessmentSession)
+        .options(
+            joinedload(AssessmentSession.result),
+            joinedload(AssessmentSession.reward),
+        )
+        .filter(AssessmentSession.session_id == numeric_id)
+        .first()
+    )
+    is_new = session_row is None
     if session_row and session_row.completion_status == CompletionStatus.COMPLETED:
         result_row = session_row.result
         reward_row = session_row.reward
@@ -163,7 +167,7 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
         db.flush()
         response.status_code = 201
 
-    result_row = db.get(AssessmentResult, numeric_id)
+    result_row = None if is_new else session_row.result
     if result_row:
         result_row.c1_visual_signs_score = payload.c1_visual_signs_score
         result_row.c2_sentence_comprehension_score = payload.c2_sentence_comprehension_score
@@ -188,9 +192,7 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
         if payload.reward_issued and payload.iot_trigger_type != "NONE"
         else ("WIFI_CREDENTIAL" if payload.reward_issued else "NONE")
     )
-    reward_row = (
-        db.query(Reward).filter(Reward.session_id == numeric_id).one_or_none()
-    )
+    reward_row = None if is_new else session_row.reward
     if reward_row:
         reward_row.issued = payload.reward_issued
         reward_row.trigger_type = TriggerType(trigger_str)
@@ -220,8 +222,12 @@ def upsert_session(payload: SessionIn, response: Response, db: Session = Depends
 def list_sessions(limit: int = 5000, db: Session = Depends(get_db)):
     rows = (
         db.query(AssessmentSession)
+        .options(
+            joinedload(AssessmentSession.result),
+            joinedload(AssessmentSession.reward),
+        )
         .order_by(AssessmentSession.session_id.desc())
-        .limit(min(limit, 20000))
+        .limit(max(1, min(limit, 20000)))
         .all()
     )
     out: list[SessionOut] = []
