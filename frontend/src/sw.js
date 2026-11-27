@@ -12,7 +12,7 @@ const navigationHandler = createHandlerBoundToURL('/index.html');
 
 registerRoute(
   new NavigationRoute(navigationHandler, {
-    denylist: [/^\/api\//, /^\/datos/, /^\/admin/, /^\/qr/, /^\/form/, /^\/login/, /^\/register/],
+    denylist: [/^\/api\//, /^\/datos/, /^\/admin/, /^\/qr/, /^\/form/, /^\/login/, /^\/register/, /^\/lan-info\.json$/],
   }),
 );
 

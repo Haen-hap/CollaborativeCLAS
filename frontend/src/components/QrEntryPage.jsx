@@ -1,55 +1,71 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LanguageSelector, useI18n } from "../utils/i18n";
+import { resolveLanPortalUrl } from "../utils/lanPortal";
 import { buildQrMatrixGrid, drawMatrixGridToCanvas } from "../utils/qrCode";
 
 const EXPORT_FILENAME = "gbm-cclas-credential-qr.png";
-
-function resolvePortalEndpoint() {
-  if (typeof window === "undefined") {
-    return "/";
-  }
-  return `${window.location.origin}/`;
-}
+const LAN_INFO_POLL_MS = 5000;
 
 export default function QrEntryPage() {
   const { t } = useI18n();
   const matrixCanvasRef = useRef(null);
-  const [portalEndpointUri, setPortalEndpointUri] = useState(() =>
-    resolvePortalEndpoint()
+  const [portalEndpoint, setPortalEndpoint] = useState(() =>
+    resolveLanPortalUrl({
+      lanInfo: null,
+      locationOrigin: typeof window !== "undefined" ? window.location.origin : "",
+    }),
   );
   const [activeNetworkMode, setActiveNetworkMode] = useState(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isLoopback =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-    if (!isLoopback) return;
+    if (typeof window === "undefined") return undefined;
 
-    fetch("/lan-info.json", { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error("lan-info unavailable");
-        return res.json();
-      })
-      .then((data) => {
-        if (data && (data.url || data.ipv4)) {
-          const targetUrl = data.url || `http://${data.ipv4}/`;
-          setPortalEndpointUri(targetUrl);
-          const label =
-            data.mode === "hotspot"
-              ? `Hotspot (${data.ipv4})`
-              : `LAN / Wi-Fi (${data.ipv4})`;
-          setActiveNetworkMode(label);
+    const refreshLanInfo = async () => {
+      try {
+        const response = await fetch("/lan-info.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("lan-info unavailable");
+        const lanInfo = await response.json();
+        const resolvedEndpoint = resolveLanPortalUrl({
+          lanInfo,
+          locationOrigin: window.location.origin,
+        });
+        setPortalEndpoint(resolvedEndpoint);
+
+        let nextMode = null;
+        if (resolvedEndpoint && lanInfo?.ipv4) {
+          nextMode =
+            lanInfo.mode === "hotspot"
+              ? `Hotspot (${lanInfo.ipv4})`
+              : `LAN / Wi-Fi (${lanInfo.ipv4})`;
         }
-      })
-      .catch(() => {
-        // Fallback silently to localhost origin
-      });
+        setActiveNetworkMode(nextMode);
+      } catch {
+        setPortalEndpoint(
+          resolveLanPortalUrl({
+            lanInfo: null,
+            locationOrigin: window.location.origin,
+          }),
+        );
+        setActiveNetworkMode(null);
+      }
+    };
+
+    refreshLanInfo();
+    const pollTimer = window.setInterval(refreshLanInfo, LAN_INFO_POLL_MS);
+    return () => window.clearInterval(pollTimer);
   }, []);
 
   const synthesisState = useMemo(() => {
+    if (!portalEndpoint) {
+      return {
+        isReady: false,
+        moduleGrid: null,
+        faultMessage: "",
+      };
+    }
+
     try {
-      const moduleGrid = buildQrMatrixGrid(portalEndpointUri);
+      const moduleGrid = buildQrMatrixGrid(portalEndpoint);
       return {
         isReady: true,
         moduleGrid,
@@ -63,7 +79,7 @@ export default function QrEntryPage() {
           synthesisFault?.message || t("qr.faultDefault"),
       };
     }
-  }, [portalEndpointUri, t]);
+  }, [portalEndpoint, t]);
 
   useEffect(() => {
     const surfaceNode = matrixCanvasRef.current;
@@ -152,12 +168,32 @@ export default function QrEntryPage() {
           </p>
 
           <figure className="gbm-matrix-frame">
-            <canvas
-              ref={matrixCanvasRef}
-              className="gbm-matrix-canvas"
-              role="img"
-              aria-label={t("qr.canvasAria", { url: portalEndpointUri })}
-            />
+            {portalEndpoint ? (
+              <canvas
+                ref={matrixCanvasRef}
+                className="gbm-matrix-canvas"
+                role="img"
+                aria-label={t("qr.canvasAria", { url: portalEndpoint })}
+              />
+            ) : (
+              <div
+                className="gbm-matrix-canvas"
+                role="status"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 248,
+                  boxSizing: "border-box",
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#1C2530",
+                }}
+              >
+                Esperando red Wi-Fi o Hotspot...
+              </div>
+            )}
             {synthesisState.faultMessage ? (
               <figcaption className="gbm-matrix-fault" role="alert">
                 {t("qr.faultPrefix", { message: synthesisState.faultMessage })}
@@ -173,9 +209,13 @@ export default function QrEntryPage() {
             <div className="gbm-meta-item">
               <dt>{t("qr.meta.rootLabel")}</dt>
               <dd>
-                <a className="gbm-endpoint-link" href={portalEndpointUri}>
-                  {portalEndpointUri}
-                </a>
+                {portalEndpoint ? (
+                  <a className="gbm-endpoint-link" href={portalEndpoint}>
+                    {portalEndpoint}
+                  </a>
+                ) : (
+                  <span>—</span>
+                )}
               </dd>
             </div>
             <div className="gbm-meta-item">

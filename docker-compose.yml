@@ -47,6 +47,15 @@ services:
     depends_on:
       - backend
 
+  lan-watcher:
+    image: alpine:3.20
+    restart: unless-stopped
+    network_mode: host
+    command: ["/bin/sh", "/usr/local/bin/lan_url.sh", "--out", "/run/cclas-lan/lan-info.json", "--watch", "5"]
+    volumes:
+      - ./scripts/lan_url.sh:/usr/local/bin/lan_url.sh:ro
+      - lan_info_data:/run/cclas-lan
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -54,12 +63,15 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./runtime/lan:/usr/share/nginx/lan:ro
+      - lan_info_data:/run/cclas-lan:ro
     depends_on:
       backend:
         condition: service_healthy
       frontend:
         condition: service_started
+      lan-watcher:
+        condition: service_started
 
 volumes:
   postgres_data:
+  lan_info_data:
