@@ -128,12 +128,14 @@
   border-radius: var(--gbm-radius-sub);
   background: var(--gbm-light);
   color: var(--gbm-charcoal);
-  font-size: 20px;
-  letter-spacing: 0.2em;
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: normal;
 }
 
 .analytics-gate input::placeholder {
   color: var(--gbm-charcoal-muted);
+  letter-spacing: normal;
 }
 
 .analytics-gate input:focus {
